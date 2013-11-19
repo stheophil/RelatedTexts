@@ -18,57 +18,6 @@ object TestStemmer {
   }
 }
 
-import org.jsoup.Jsoup
-object RSS {
-  class Item(val title : String, val link: String, val fulltext: String)
-
-  def items(url: String) : Seq[Item] = {
-    val feed = scala.xml.XML.load(url)
-    feed.child.filter(_.label=="channel").flatMap(
-      _.child.filter(_.label=="item").flatMap( item => {
-            val opttitle = item.child.find(_.label == "title").map(_.text)
-            val optlink = item.child.find( _.label == "link").map(_.text)
-            val opttext = optlink map {
-              link =>
-                Console.println("Scrape " + link)
-
-                try {
-                  import scala.collection.JavaConversions._
-                  val html = Jsoup.connect(link).get();
-                  val text = html.select("p").map(_.text()).toList
-                  val avgLength = text.map( _.length ).sum / text.length
-                  // Console.println("Average <p> length: " + avgLength)
-
-                  if(100<avgLength) {
-                    /*
-                    text.foreach( p => {
-                      if(p.length<avgLength) {
-                        Console.println("Ignored <p> below avg length: " + p)
-                      }
-                    })
-                    */
-                    text.filter(_.length >= avgLength).mkString(" ")
-                  } else {
-                    ""
-                  }
-                } catch {
-                  case e: Exception =>
-                    Console.println("Error fetching text. Exception: " + e.getMessage)
-
-                  ""
-                }
-            }
-            opttext match {
-              case Some(text) => {
-                val item = new Item(opttitle.getOrElse(""), optlink.get, text)
-                List[Item](item)
-              }
-              case None => List.empty[Item]
-            }
-      }))
-  }
-}
-
 
 object FeedMatcher {
   def main(args: Array[String]) {
@@ -86,7 +35,6 @@ object FeedMatcher {
           }
         }
       ).toSet
-    Console.println("Stop Words: " + stopWords.mkString(", "))
 
     val txtstatCorpus = new TextStatistics(
       Seq(
@@ -101,20 +49,7 @@ object FeedMatcher {
         new WeightedText(line, txtstatCorpus)
       ).toList
 
-    entries.foreach( entry => {
-      Console.println("")
-      Console.println("Entry: " + entry.text)
-      entry.ngramWeights.foreach( mapseqWeight => {
-        Console.println("")
-        Console.println( mapseqWeight.head._1.length + "-gram weights: " +
-          mapseqWeight.toArray.sortBy(_._2).reverse.map(
-            t => (t._1.mkString(", "), t._2)
-          ).mkString(", ")
-        )
-      })
-    })
-
-    class FeedStatistics(val item: RSS.Item) extends TextStatistics(item.fulltext, stopWords)
+    class FeedStatistics(val item: Item, val text: String) extends TextStatistics(text, stopWords)
 
     val feeds = List("http://rss.sueddeutsche.de/rss/Politik",
       "http://www.welt.de/politik/deutschland/?service=Rss",
@@ -126,15 +61,39 @@ object FeedMatcher {
       "http://www.faz.net/rss/aktuell/politik/",
       "http://www.faz.net/rss/aktuell/wirtschaft")
 
-    val articles = feeds.flatMap( RSS.items(_) ).map( item => new FeedStatistics(item) )
+    import scala.concurrent._
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val articles =
+      Await.result(
+        Future.sequence( feeds.map( url => {
+          future {
+            val feed = new Feed(url)
+            val itemdoc = feed.items. // TODO: Filter items we've seen already
+              map( item => (item, item.paragraphs) ).
+              filter( _._2.isSuccess ).
+              map( itemdoc => (itemdoc._1, itemdoc._2.get) )
+
+            val avgLength = itemdoc.map( _._2.text.length ).sum / itemdoc.length
+            val shortArticle = (itemdoc: (Item, Document)) => itemdoc._2.text.length < avgLength/4
+
+            itemdoc.filter( shortArticle ).foreach( itemdoc =>
+              Console.println("[Warning] Document too short: " + itemdoc._1.link + " / " + itemdoc._2.text.length)
+            )
+
+            itemdoc.filter( !shortArticle(_) )
+          }
+        })),
+        duration.Duration(5, duration.MINUTES)
+      ).flatten.map( itemdoc => new FeedStatistics(itemdoc._1, itemdoc._2.text))
 
     val matches = bestMatches(entries, articles, 100).reverse.foreach{
       case (entry, score, textmatch) => {
         Console.println("(" + score +") Entry: " + entry.text)
-        Console.println("\t " + textmatch.text.item.title)
-        Console.println("\t " + textmatch.text.item.link)
+        val feed = textmatch.text
+        Console.println("\t " + feed.item.title)
+        Console.println("\t " + feed.item.link)
         Console.println("\t " + textmatch.bestMatchingNGrams.sortBy(_._2).reverse.mkString(", "))
-        Console.println("\t " + textmatch.text.item.fulltext)
+        Console.println("\t " + feed.text)
         Console.println("")
       }
     }
