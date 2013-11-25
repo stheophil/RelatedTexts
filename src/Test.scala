@@ -1,3 +1,6 @@
+import _root_.text._
+import feed._
+
 import scala.Console
 
 object TestStemmer {
@@ -21,35 +24,7 @@ object TestStemmer {
 
 object FeedMatcher {
   def main(args: Array[String]) {
-    import Text._
-
-    // http://snowball.tartarus.org/algorithms/german/stop.txt
-    val stopWords = io.Source.fromFile("test/stopwords.txt", "UTF-8").getLines().toList.flatMap(
-      line => {
-          val idxComment = line.indexOf("|")
-          val text = line.substring(0, if(idxComment == -1) { line.length } else { idxComment }).trim
-          if(text.isEmpty) {
-            List.empty[String]
-          } else {
-            List(GermanStemmer(text))
-          }
-        }
-      ).toSet
-
-    val txtstatCorpus = new TextStatistics(
-      Seq(
-        io.Source.fromURL("http://www.gutenberg.org/cache/epub/34811/pg34811.txt", "UTF-8"), // Buddenbrocks
-        io.Source.fromFile("test/cdu_wahlversprechen.txt", "UTF-8")
-      ),
-      stopWords)
-
-    class WeightedText(val text: String, txtstatCorpus: TextStatistics) extends WeightedStatistics(text, txtstatCorpus, stopWords)
-    val entries = (
-      for(line <- io.Source.fromFile("test/cdu_wahlversprechen.txt").getLines) yield
-        new WeightedText(line, txtstatCorpus)
-      ).toList
-
-    class FeedStatistics(val item: Item, val text: String) extends TextStatistics(text, stopWords)
+    val analyzer = new Analyzer("test/cdu_wahlversprechen.txt")
 
     val feeds = List("http://rss.sueddeutsche.de/rss/Politik",
       "http://www.welt.de/politik/deutschland/?service=Rss",
@@ -59,45 +34,57 @@ object FeedMatcher {
       "http://newsfeed.zeit.de/wirtschaft/index",
       "http://newsfeed.zeit.de/gesellschaft/index",
       "http://www.faz.net/rss/aktuell/politik/",
-      "http://www.faz.net/rss/aktuell/wirtschaft")
+      "http://www.faz.net/rss/aktuell/wirtschaft"
+     )
 
-    import scala.concurrent._
-    import scala.concurrent.ExecutionContext.Implicits.global
-    val articles =
-      Await.result(
-        Future.sequence( feeds.map( url => {
-          future {
-            val feed = new Feed(url)
-            val itemdoc = feed.items. // TODO: Filter items we've seen already
-              map( item => (item, item.paragraphs) ).
-              filter( _._2.isSuccess ).
-              map( itemdoc => (itemdoc._1, itemdoc._2.get) )
+    case class FeedStatistics(val item: Item, val text: String) extends TextStatistics(text, analyzer.stopWords)
 
-            val avgLength = itemdoc.map( _._2.text.length ).sum / itemdoc.length
-            val shortArticle = (itemdoc: (Item, Document)) => itemdoc._2.text.length < avgLength/4
+    var articlesSeen = collection.mutable.Map.empty[String, java.util.Date] // url to first seen time
 
-            itemdoc.filter( shortArticle ).foreach( itemdoc =>
-              Console.println("[Warning] Document too short: " + itemdoc._1.link + " / " + itemdoc._2.text.length)
-            )
+    implicit val order = Ordering.by[(WeightedText, TextMatch[FeedStatistics]), Double](_._2.value)
+    var matches = collection.mutable.SortedSet.empty[(WeightedText, TextMatch[FeedStatistics])]
 
-            itemdoc.filter( !shortArticle(_) )
-          }
-        })),
-        duration.Duration(5, duration.MINUTES)
-      ).flatten.map( itemdoc => new FeedStatistics(itemdoc._1, itemdoc._2.text))
+    while(true) {
+      import scala.concurrent._
+      import scala.concurrent.ExecutionContext.Implicits.global
 
-    val matches = bestMatches(entries, articles, 100).reverse.foreach{
-      case (entry, score, textmatch) => {
-        Console.println("(" + score +") Entry: " + entry.text)
-        val feed = textmatch.text
-        Console.println("\t " + feed.item.title)
-        Console.println("\t " + feed.item.link)
-        Console.println("\t " + textmatch.bestMatchingNGrams.sortBy(_._2).reverse.mkString(", "))
-        Console.println("\t " + feed.text)
-        Console.println("")
+      val articles =
+        Await.result(
+          Future.sequence( feeds.map( url => {
+            future {
+              feed.Feed.newExtractedTexts(url, articlesSeen.contains(_) ).map(
+                itemtxt => FeedStatistics(itemtxt._1, itemtxt._2.text)
+              )
+            }
+          })),
+          duration.Duration(5, duration.MINUTES)
+        ).flatten
+
+      // add new articles to "seen" map
+      articles.foreach( feedstat => {
+        assert(!articlesSeen.contains(feedstat.item.link))
+        articlesSeen.update(feedstat.item.link, new java.util.Date())
+      })
+
+      // erase old articles from "seen" map
+
+      matches ++= analyzer.bestMatches(articles, 100)
+      matches = matches.takeRight(100) // folding best matches into matches would be more elegant
+      matches.toSeq.reverse.foreach{
+        case (entry, textmatch) => {
+          Console.println("(" + textmatch.value +") Entry: " + entry.text)
+
+          val feed = textmatch.text
+          Console.println("\t " + feed.item.title)
+          Console.println("\t " + feed.item.link)
+          Console.println("\t " + textmatch.matches.sortBy(_._2).reverse.mkString(", "))
+          Console.println("\t " + feed.text)
+          Console.println("")
+        }
       }
-    }
 
+      Thread.sleep(1000*60*10)
+    }
     // TODO: Access Twitter timelines: https://dev.twitter.com/docs/api/1.1/get/statuses/user_timeline
     // TODO: Access ZEIT API:      key=94fb85c06355e4e27925c530cdba809fbfaf7d349202390264a4
   }

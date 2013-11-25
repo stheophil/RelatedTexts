@@ -1,7 +1,8 @@
-object Text {
+package text {
 
-  val regexSeparator = "[^\\wÄÖÜäöüß]+"
   class TextStatistics(text: String, stopwords: Set[String]) {
+    val regexSeparator = "[^\\wÄÖÜäöüß]+"
+
     val ngramCount = countNGrams(text.
       split(regexSeparator).
       map(s => GermanStemmer(s)).
@@ -40,7 +41,7 @@ object Text {
     }
   }
 
-  class Score(val value: Double, val matches: Seq[(Seq[String], Double)])
+  class TextMatch[A](val value: Double, val matches: Seq[(String, Double)], val text: A) {}
 
   class WeightedStatistics(text: String, txtstatGlobal: TextStatistics, stopwords: Set[String] ) {
     // Currently, matches are not worth more the longer the ngram.
@@ -51,7 +52,7 @@ object Text {
       }
     )
 
-    def score(statsOther: TextStatistics) : Score = {
+    def score[A<:TextStatistics](statsOther: A) : TextMatch[A] = {
       // We ignore how often a word occurs in statsOther when computing the score.
       // Too often, a single word may occur very often in a long enough text.
       // What should count is the total number of (relevant) words that occur in a text.
@@ -64,34 +65,70 @@ object Text {
         }.toList.filter(_._2>0)
       )
 
-      new Score(
+      new TextMatch[A](
         ngramScores.foldLeft(0.0) {
           case (sum, listSeqScore) => sum + listSeqScore.map(_._2).sum
         },
-        ngramScores.flatten.sortBy(_._2).takeRight(5)
+        ngramScores.flatten.
+          sortBy(_._2).
+          takeRight(5).map{
+            case (seqstr, f) => ("\"" + seqstr.mkString(" ") + "\"", f)
+          },
+        statsOther
       )
     }
   }
 
-  class TextMatch[A](score: Score, val text: A) {
-    val bestMatchingNGrams = score.matches.map{
-      case (seqstr, f) => ("\"" + seqstr.mkString(" ") + "\"", f)
+  class WeightedText(val text: String, corpus: TextStatistics, stopWords: Set[String]) extends WeightedStatistics(text, corpus, stopWords)
+
+  class Analyzer(filename: String) {
+    // http://snowball.tartarus.org/algorithms/german/stop.txt
+    val stopWords = io.Source.fromFile("test/stopwords.txt", "UTF-8").getLines().toList.flatMap(
+      line => {
+        val idxComment = line.indexOf("|")
+        val text = line.substring(0, if(idxComment == -1) { line.length } else { idxComment }).trim
+        if(text.isEmpty) {
+          List.empty[String]
+        } else {
+          List(GermanStemmer(text))
+        }
+      }
+    ).toSet
+
+    val corpus = new TextStatistics(
+      Seq(
+        io.Source.fromURL("http://www.gutenberg.org/cache/epub/34811/pg34811.txt", "UTF-8"), // Buddenbrocks
+        io.Source.fromFile(filename, "UTF-8")
+      ),
+      stopWords)
+
+    val entries = (
+      for(line <- io.Source.fromFile(filename).getLines) yield
+        new WeightedText(line, corpus, stopWords)
+      ).toList
+
+    def apply(text: String) : TextStatistics = {
+      new TextStatistics(text, stopWords)
     }
-  }
 
-  def bestMatches[A<:WeightedStatistics, B<:TextStatistics](entries: Seq[A], texts: Seq[B], limit: Int) : Seq[(A, Double, TextMatch[B])] = {
-    var queue = collection.mutable.SortedSet.empty[(Score, A, B)](Ordering.by[(Score, A, B), Double](_._1.value))
-    texts.foreach( text => {
-       entries.foreach( entry => {
-          queue = (queue + ((entry.score(text), entry, text))).takeRight(limit)
-       })
-    })
+    def bestMatches[B<:TextStatistics](texts: Seq[B], limit: Int) : Seq[(WeightedText, TextMatch[B])] = {
+      implicit val order = Ordering.by[(WeightedText, TextMatch[B]), Double](_._2.value)
+      var queue = scala.collection.immutable.SortedSet.empty[(WeightedText, TextMatch[B])]
+      texts.foreach( text => {
+        entries.foreach( entry => {
+          val element = (entry, entry.score(text))
+          if(queue.size < limit) {
+            queue = queue + element
+          } else if(order.lt(queue.last, element)) {
+            queue = (queue + element) - queue.last
+          }
+        })
+      })
 
-    // Grouping the 'limit' best matches e.g. by entry and _adding_ the scores is not a good idea
-    // The quality of matches declines rapidly. Some bad matches may occur very often which
-    // can in the end overshadow the good matches.
-    queue.toList.map {
-      case (score, entry, text) => (entry, score.value, new TextMatch[B](score, text))
+      // Grouping the 'limit' best matches e.g. by entry and _adding_ the scores is not a good idea
+      // The quality of matches declines rapidly. Some bad matches may occur very often which
+      // can in the end overshadow the good matches.
+      queue.toList
     }
   }
 }
