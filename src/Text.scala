@@ -119,8 +119,8 @@ package text {
           val element = (entry, entry.score(text))
           if(queue.size < limit) {
             queue = queue + element
-          } else if(order.lt(queue.last, element)) {
-            queue = (queue + element) - queue.last
+          } else if(order.lt(queue.head, element)) {
+            queue = (queue + element) - queue.head
           }
         })
       })

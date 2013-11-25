@@ -18,7 +18,7 @@ Still very much work in progress.
   &lt;link rel="apple-touch-icon" sizes="114x114" href="touch-icon-iphone-retina.png" &gt;  
   &lt;link rel="apple-touch-icon" sizes="144x144" href="touch-icon-ipad-retina.png" &gt;  
 
-- keep track of parsed and rated texts with date when they have been seen first
+- <strike>keep track of parsed and rated texts with date when they have been seen first</strike>
 - read this list at program start, store it at program end
 - export rated matches as JSON object
 - prune rated to only contain texts at most 24h|3d|7d old

@@ -39,7 +39,7 @@ object FeedMatcher {
 
     case class FeedStatistics(val item: Item, val text: String) extends TextStatistics(text, analyzer.stopWords)
 
-    var articlesSeen = collection.mutable.Map.empty[String, java.util.Date] // url to first seen time
+    var articlesSeen = collection.mutable.Map.empty[String, (Int, java.util.Date)] // url, length, url to first seen time
 
     implicit val order = Ordering.by[(WeightedText, TextMatch[FeedStatistics]), Double](_._2.value)
     var matches = collection.mutable.SortedSet.empty[(WeightedText, TextMatch[FeedStatistics])]
@@ -52,7 +52,10 @@ object FeedMatcher {
         Await.result(
           Future.sequence( feeds.map( url => {
             future {
-              feed.Feed.newExtractedTexts(url, articlesSeen.contains(_) ).map(
+              feed.Feed.newExtractedTexts(
+                url,
+                articlesSeen.get(_).map(_._1).getOrElse(0) // length of seen article or 0
+              ).map(
                 itemtxt => FeedStatistics(itemtxt._1, itemtxt._2.text)
               )
             }
@@ -62,11 +65,10 @@ object FeedMatcher {
 
       // add new articles to "seen" map
       articles.foreach( feedstat => {
-        assert(!articlesSeen.contains(feedstat.item.link))
-        articlesSeen.update(feedstat.item.link, new java.util.Date())
+        articlesSeen.update(feedstat.item.link, (feedstat.text.length, new java.util.Date()))
       })
 
-      // erase old articles from "seen" map
+      // TODO: erase old articles from "seen" map
 
       matches ++= analyzer.bestMatches(articles, 100)
       matches = matches.takeRight(100) // folding best matches into matches would be more elegant

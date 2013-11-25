@@ -36,18 +36,21 @@ package feed {
   }
 
   object Feed {
-    def newExtractedTexts(url: String, seen: (String) => Boolean) : Seq[(Item, ExtractedText)] = {
+    def newExtractedTexts(url: String, seenLength: (String) => Int) : Seq[(Item, ExtractedText)] = {
       try {
         val feed = new Feed(url)
-        val itemdoc = feed.items.
-          filter( item => !seen(item.link) ).
+        val itemsAll = feed.items
+        val itemsSeen = itemsAll.filter(item => seenLength(item.link)>0 )
+
+        val itemdoc = itemsAll.filter( item => seenLength(item.link)<=0 ).
           map( item => (item, item.extract) ). // scrape feed on demand
           filter( _._2.isSuccess ).
           map( itemdoc => (itemdoc._1, itemdoc._2.get) )
 
-        val avgLength = itemdoc.map( _._2.text.length ).sum / Math.max(itemdoc.length, 0)
-        val shortArticle = (itemdoc: (Item, ExtractedText)) => itemdoc._2.text.length < avgLength/4
+        val avgLength = (itemdoc.map( _._2.text.length ).sum + itemsSeen.map(i => seenLength(i.link)).sum) /
+          Math.max(itemdoc.length + itemsSeen.length, 0)
 
+        val shortArticle = (itemdoc: (Item, ExtractedText)) => itemdoc._2.text.length < avgLength/4
         itemdoc.filter( shortArticle ).foreach( itemdoc =>
           Console.println("[Warning] Document too short: " + itemdoc._1.link + " / " + itemdoc._2.text.length)
         )
