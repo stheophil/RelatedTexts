@@ -7,13 +7,7 @@ package text {
       split(regexSeparator).
       map(s => GermanStemmer(s)).
       filter( !stopwords(_) ),
-      2) // max n-gram = 2
-
-    val maxCount = ngramCount.map( _.map(_._2).max )
-
-    def this(seqfile: Seq[io.Source], stopwords: Set[String]) {
-      this( seqfile.flatMap(_.getLines()).mkString("\n"), stopwords )
-    }
+      3) // max n-gram = 2
 
     def apply(ngram: Seq[String]) : Int = {
       require(0 < ngram.length )
@@ -29,6 +23,8 @@ package text {
       1.0/Math.max(apply(ngram), 1)
     }
 
+    def maxWeight : Double = 1.0
+
     private def countNGrams(words: Seq[String], n: Int) : IndexedSeq[Map[Seq[String], Int]] = {
       // TODO: Build IndexedSeq[SortedMap[Seq[String], Int]] here. Counting text matches
       // is calculating intersection of two maps.
@@ -41,18 +37,28 @@ package text {
     }
   }
 
-  class TextMatch[A](val value: Double, val matches: Seq[(String, Double)], val text: A) {}
+  trait Analyzable {
+    def text: String
+    def keywords: Seq[String] = Seq.empty[String]
+  }
 
-  class WeightedStatistics(text: String, txtstatGlobal: TextStatistics, stopwords: Set[String] ) {
+  class WeightedStatistics[T<:Analyzable](val analyzable: T, txtstatGlobal: TextStatistics, stopwords: Set[String] ) {
+    private val keywordStems = analyzable.keywords.map(GermanStemmer(_)).toSet
+
     // Currently, matches are not worth more the longer the ngram.
     // Since every word in a matching 2-gram also matches on its own, 2-grams are "worth more" automatically
-    val ngramWeights = new TextStatistics(text, stopwords).ngramCount.toSeq.map(
+    val ngramWeights = new TextStatistics(analyzable.text, stopwords).ngramCount.toSeq.map(
       _.map{
-        case (seqwords, count) => (seqwords, txtstatGlobal.weight(seqwords))
+          case (seqwords, count) => {
+            if(seqwords.length==1 && keywordStems(seqwords.head))
+              (seqwords, txtstatGlobal.maxWeight)
+            else
+              (seqwords, txtstatGlobal.weight(seqwords))
+          }
       }
     )
 
-    def score[A<:TextStatistics](statsOther: A) : TextMatch[A] = {
+    def score(statsOther: TextStatistics) : (Double, Seq[(String, Double)]) = {
       // We ignore how often a word occurs in statsOther when computing the score.
       // Too often, a single word may occur very often in a long enough text.
       // What should count is the total number of (relevant) words that occur in a text.
@@ -65,23 +71,21 @@ package text {
         }.toList.filter(_._2>0)
       )
 
-      new TextMatch[A](
+      (
         ngramScores.foldLeft(0.0) {
           case (sum, listSeqScore) => sum + listSeqScore.map(_._2).sum
         },
         ngramScores.flatten.
           sortBy(_._2).
           takeRight(5).map{
-            case (seqstr, f) => ("\"" + seqstr.mkString(" ") + "\"", f)
-          },
-        statsOther
+          case (seqstr, f) => ("\"" + seqstr.mkString(" ") + "\"", f)
+        }
       )
     }
   }
+  class TextMatch[B](val value: Double, val words: Seq[(String, Double)], val matched: B)
 
-  class WeightedText(val text: String, corpus: TextStatistics, stopWords: Set[String]) extends WeightedStatistics(text, corpus, stopWords)
-
-  class Analyzer(filename: String) {
+  class Analyzer[T<:Analyzable](analyzables: Seq[T]) {
     // http://snowball.tartarus.org/algorithms/german/stop.txt
     val stopWords = io.Source.fromFile("test/stopwords.txt", "UTF-8").getLines().toList.flatMap(
       line => {
@@ -96,27 +100,24 @@ package text {
     ).toSet
 
     val corpus = new TextStatistics(
-      Seq(
-        io.Source.fromURL("http://www.gutenberg.org/cache/epub/34811/pg34811.txt", "UTF-8"), // Buddenbrocks
-        io.Source.fromFile(filename, "UTF-8")
-      ),
+        (io.Source.
+          fromURL("http://www.gutenberg.org/cache/epub/34811/pg34811.txt", "UTF-8").
+          getLines() ++ // Buddenbrocks
+          analyzables.map(_.text) ++
+          analyzables.flatMap(_.keywords)).mkString("\n"),
       stopWords)
 
-    val entries = (
-      for(line <- io.Source.fromFile(filename).getLines) yield
-        new WeightedText(line, corpus, stopWords)
-      ).toList
+    val entries = analyzables.map( new WeightedStatistics[T](_, corpus, stopWords) )
 
-    def apply(text: String) : TextStatistics = {
-      new TextStatistics(text, stopWords)
-    }
+    def bestMatches[B<:Analyzable](texts: Seq[B], limit: Int) : Seq[(T, TextMatch[B])] = {
+      val textstats = texts.map( text => (text, new TextStatistics(text.text, stopWords)))
 
-    def bestMatches[B<:TextStatistics](texts: Seq[B], limit: Int) : Seq[(WeightedText, TextMatch[B])] = {
-      implicit val order = Ordering.by[(WeightedText, TextMatch[B]), Double](_._2.value)
-      var queue = scala.collection.immutable.SortedSet.empty[(WeightedText, TextMatch[B])]
-      texts.foreach( text => {
+      implicit val order = Ordering.by[(T, TextMatch[B]), Double](_._2.value)
+      var queue = scala.collection.immutable.SortedSet.empty[(T, TextMatch[B])]
+      textstats.foreach( textstat => {
         entries.foreach( entry => {
-          val element = (entry, entry.score(text))
+          val score = entry.score(textstat._2)
+          val element = (entry.analyzable, new TextMatch[B](score._1, score._2, textstat._1))
           if(queue.size < limit) {
             queue = queue + element
           } else if(order.lt(queue.head, element)) {

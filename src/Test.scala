@@ -1,6 +1,7 @@
 import _root_.text._
 import feed._
 
+import java.util.Date
 import scala.Console
 
 object TestStemmer {
@@ -24,7 +25,13 @@ object TestStemmer {
 
 object FeedMatcher {
   def main(args: Array[String]) {
-    val analyzer = new Analyzer("test/cdu_wahlversprechen.txt")
+    class Statement(override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
+
+    val analyzer = new Analyzer(
+      (for(line <- io.Source.fromFile("test/cdu_wahlversprechen.txt").getLines) yield
+      new Statement(line, Seq.empty[String], "")
+      ).toList
+    )
 
     val feeds = List("http://rss.sueddeutsche.de/rss/Politik",
       "http://www.welt.de/politik/deutschland/?service=Rss",
@@ -37,17 +44,18 @@ object FeedMatcher {
       "http://www.faz.net/rss/aktuell/wirtschaft"
      )
 
-    case class FeedStatistics(val item: Item, val text: String) extends TextStatistics(text, analyzer.stopWords)
+    class FeedItem(val item: Item, override val text: String) extends Analyzable
 
-    var articlesSeen = collection.mutable.Map.empty[String, (Int, java.util.Date)] // url, length, url to first seen time
+    var articlesSeen = collection.mutable.Map.empty[String, (Int, Date)] // url, length, url to first seen time
 
-    implicit val order = Ordering.by[(WeightedText, TextMatch[FeedStatistics]), Double](_._2.value)
-    var matches = collection.mutable.SortedSet.empty[(WeightedText, TextMatch[FeedStatistics])]
+    implicit val order = Ordering.by[(Statement, TextMatch[FeedItem]), Double](_._2.value)
+    var matches = collection.mutable.SortedSet.empty[(Statement, TextMatch[FeedItem])]
 
     while(true) {
       import scala.concurrent._
       import scala.concurrent.ExecutionContext.Implicits.global
 
+      var timeStart = new Date().getTime()
       val articles =
         Await.result(
           Future.sequence( feeds.map( url => {
@@ -56,7 +64,7 @@ object FeedMatcher {
                 url,
                 articlesSeen.get(_).map(_._1).getOrElse(0) // length of seen article or 0
               ).map(
-                itemtxt => FeedStatistics(itemtxt._1, itemtxt._2.text)
+                itemtxt => new FeedItem(itemtxt._1, itemtxt._2.text)
               )
             }
           })),
@@ -65,22 +73,28 @@ object FeedMatcher {
 
       // add new articles to "seen" map
       articles.foreach( feedstat => {
-        articlesSeen.update(feedstat.item.link, (feedstat.text.length, new java.util.Date()))
+        articlesSeen.update(feedstat.item.link, (feedstat.text.length, new Date()))
       })
+      var timeEnd = new Date().getTime()
+      Console.println("[Info] Read and scraped " + articles.length + " texts in " + (timeEnd - timeStart) + " ms" )
 
       // TODO: erase old articles from "seen" map
 
+      timeStart = new Date().getTime()
       matches ++= analyzer.bestMatches(articles, 100)
       matches = matches.takeRight(100) // folding best matches into matches would be more elegant
+      timeEnd = new Date().getTime()
+      Console.println("[Info] Analyzed " + articles.length + " texts in " + (timeEnd - timeStart) + " ms" )
+
       matches.toSeq.reverse.foreach{
         case (entry, textmatch) => {
           Console.println("(" + textmatch.value +") Entry: " + entry.text)
 
-          val feed = textmatch.text
-          Console.println("\t " + feed.item.title)
-          Console.println("\t " + feed.item.link)
-          Console.println("\t " + textmatch.matches.sortBy(_._2).reverse.mkString(", "))
-          Console.println("\t " + feed.text)
+          val feeditem = textmatch.matched
+          Console.println("\t " + feeditem.item.title)
+          Console.println("\t " + feeditem.item.link)
+          Console.println("\t " + textmatch.words.sortBy(_._2).reverse.mkString(", "))
+          Console.println("\t " + feeditem.text)
           Console.println("")
         }
       }
