@@ -5,7 +5,7 @@
     <ignored path="RelatedTexts.iws" />
     <ignored path=".idea/workspace.xml" />
     <file path="/Test.scala" changelist="d9d8beb1-a5bf-4dec-8d38-10238519f693" time="1385573633199" ignored="false" />
-    <file path="/Text.scala" changelist="d9d8beb1-a5bf-4dec-8d38-10238519f693" time="1385498866755" ignored="false" />
+    <file path="/Text.scala" changelist="d9d8beb1-a5bf-4dec-8d38-10238519f693" time="1385575550431" ignored="false" />
     <file path="/.gitignore" changelist="d9d8beb1-a5bf-4dec-8d38-10238519f693" time="1384639867269" ignored="false" />
     <file path="/fragment.java" changelist="d9d8beb1-a5bf-4dec-8d38-10238519f693" time="1385421239113" ignored="false" />
     <file path="/RSS.scala" changelist="d9d8beb1-a5bf-4dec-8d38-10238519f693" time="1384890046253" ignored="false" />
@@ -118,10 +118,10 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="Test.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="Test.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/Test.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="57" column="26" selection-start="2156" selection-end="2156" vertical-scroll-proportion="0.9082569">
+            <state line="57" column="26" selection-start="2156" selection-end="2156" vertical-scroll-proportion="-15.461538">
               <folding>
                 <element signature="e#2039#2064#0" expanded="true" />
               </folding>
@@ -138,10 +138,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Text.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="Text.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/Text.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="9" column="7" selection-start="262" selection-end="262" vertical-scroll-proportion="0.0">
+            <state line="103" column="10" selection-start="3989" selection-end="3996" vertical-scroll-proportion="0.7289157">
               <folding />
             </state>
           </provider>
@@ -162,8 +162,8 @@
         <option value="$PROJECT_DIR$/src/GermanStemmer.scala" />
         <option value="$PROJECT_DIR$/src/Feed.scala" />
         <option value="$PROJECT_DIR$/doc/Console.txt" />
-        <option value="$PROJECT_DIR$/src/Text.scala" />
         <option value="$PROJECT_DIR$/src/Test.scala" />
+        <option value="$PROJECT_DIR$/src/Text.scala" />
       </list>
     </option>
   </component>
@@ -182,6 +182,7 @@
     </treeState>
   </component>
   <component name="ProjectFrameBounds">
+    <option name="x" value="288" />
     <option name="y" value="22" />
     <option name="width" value="1392" />
     <option name="height" value="878" />
@@ -505,7 +506,7 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="22" width="1392" height="878" extended-state="6" />
+    <frame x="288" y="22" width="1392" height="878" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -522,8 +523,8 @@
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32936803" sideWeight="0.6701847" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="SLIDING" type="SLIDING" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.25037146" sideWeight="0.5026385" order="0" side_tool="false" content_ui="combo" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.49736148" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.25037146" sideWeight="0.47493404" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.52506596" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -672,19 +673,19 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/Text.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="9" column="7" selection-start="262" selection-end="262" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/Test.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="57" column="26" selection-start="2156" selection-end="2156" vertical-scroll-proportion="0.9082569">
+        <state line="57" column="26" selection-start="2156" selection-end="2156" vertical-scroll-proportion="-15.461538">
           <folding>
             <element signature="e#2039#2064#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/Text.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="103" column="10" selection-start="3989" selection-end="3996" vertical-scroll-proportion="0.7289157">
+          <folding />
         </state>
       </provider>
     </entry>

@@ -6,7 +6,7 @@ package text {
     val ngramCount = countNGrams(text.
       split(regexSeparator).
       map(s => GermanStemmer(s)).
-      filter( !stopwords(_) ),
+      filter( stem => !stopwords(stem) && !stem.forall(_.isDigit) ),
       3) // max n-gram = 2
 
     def apply(ngram: Seq[String]) : Int = {
@@ -20,7 +20,7 @@ package text {
       // Words that occur only 1, 2 or 10 times in such long texts should probably be worth roughly the same.
       // A linear decreasing function however just amplified the noise
       // So did (1/count) + linear function
-      1.0/Math.max(apply(ngram), 1)
+      1.0 / Math.max(apply(ngram), 1)
     }
 
     def maxWeight : Double = 1.0
