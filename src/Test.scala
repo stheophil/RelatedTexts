@@ -1,3 +1,4 @@
+import scala.collection.mutable
 import text._
 import feed._
 
@@ -36,14 +37,17 @@ object FeedMatcher {
     serialize(outName, analyzer)
   }
   type AnalyzableItem = feed.Item with Analyzable
-  type SeenFeedItems = collection.mutable.Map[String, (Int, Date)] // url, length, date to first seen time
+  type MapItemUrlLength = collection.mutable.SynchronizedMap[String, Int] // url -> length
   type BestMatches = collection.mutable.SortedSet[(Statement, TextMatch[AnalyzableItem])]
 
   implicit val orderByMatchValue = Ordering.by[(Statement, TextMatch[AnalyzableItem]), Double](_._2.value)
 
-  def update(feeds: List[String], analyzer: Analyzer[Statement], feeditemsSeen: SeenFeedItems, matches: BestMatches) {
+  def update(feeds: List[String], analyzer: Analyzer[Statement], mapUrlToLength: MapItemUrlLength, matches: BestMatches) {
     import scala.concurrent._
     import scala.concurrent.ExecutionContext.Implicits.global
+
+    val mapUrlToLengthLastRun = mapUrlToLength.clone() // cannot swap out mapUrlToLength
+    mapUrlToLength.clear()
 
     var timeStart = new Date().getTime()
     val feeditems =
@@ -52,7 +56,8 @@ object FeedMatcher {
           future {
             feed.Feed.newItemsWithText(
               url,
-              feeditemsSeen.get(_).map(_._1).getOrElse(0) // length of seen article or 0
+              mapUrlToLengthLastRun.get(_).getOrElse(0), // length of seen article or 0
+              /* out */ mapUrlToLength
             ).map(
               item => new Item(item.title, item.link, item.text) with Analyzable
             )
@@ -61,10 +66,6 @@ object FeedMatcher {
         duration.Duration(5, duration.MINUTES)
       ).flatten
 
-    // add new articles to "seen" map
-    feeditems.foreach( item => {
-      feeditemsSeen.update(item.link, (item.text.length, new Date()))
-    })
     var timeEnd = new Date().getTime()
     Console.println("[Info] Read and scraped " + feeditems.length + " texts in " + (timeEnd - timeStart) + " ms" )
 
@@ -117,8 +118,8 @@ object FeedMatcher {
     )
 
     while(true) {
-      val feeditemsSeen = unserialize[SeenFeedItems](feeditemsSeenFile).getOrElse(
-        collection.mutable.Map.empty[String, (Int, Date)]
+      val feeditemsSeen = unserialize[MapItemUrlLength](feeditemsSeenFile).getOrElse(
+        new collection.mutable.HashMap[String, Int] with collection.mutable.SynchronizedMap[String, Int]
       )
 
       val bestMatches = unserialize[BestMatches](matchesFile).getOrElse(
@@ -132,10 +133,6 @@ object FeedMatcher {
         /*in/out*/ feeditemsSeen,
         /*in/out*/ bestMatches
       )
-
-      // TODO: Resulting feeditemsSeen should only contain the links found in this update.
-      // When articles disappear from RSS feed and then later reappear in the feed,
-      // they are presumably updated
 
       serialize(feeditemsSeenFile, feeditemsSeen)
       serialize(matchesFile, bestMatches)

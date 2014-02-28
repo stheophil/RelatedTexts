@@ -2,7 +2,10 @@ import org.jsoup.Jsoup
 import scala.util.{Try, Success, Failure}
 
 package feed {
-  case class Item(title : String, link: String, text: String) {
+
+import java.util.Date
+
+case class Item(title : String, link: String, text: String) {
     def withText : Try[Item] = {
       try {
         import scala.collection.JavaConversions._
@@ -35,18 +38,28 @@ package feed {
   }
 
   object Feed {
-    def newItemsWithText(url: String, seenLength: (String) => Int) : Seq[Item] = {
+    def newItemsWithText(url: String, lastSeenLength: (String) => Int, /* out */ newSeenLength: collection.mutable.SynchronizedMap[String, Int]) : Seq[Item] = {
       try {
         val feed = new Feed(url)
         val itemsAll = feed.items
-        val itemsSeen = itemsAll.filter(item => seenLength(item.link)>0 )
 
-        val itemsNewWithText = itemsAll.filter( item => seenLength(item.link)<=0 ).
+        val itemsSeen = itemsAll.filter(item => lastSeenLength(item.link)>0 )
+        // keep seen items in "seen" map
+        itemsSeen.foreach( item => {
+          newSeenLength.update(item.link, lastSeenLength(item.link))
+        })
+
+        val itemsNewWithText = itemsAll.filter( item => lastSeenLength(item.link)<=0 ).
           map( item => item.withText ). // scrape feed on demand
           filter( _.isSuccess ).
           map( _.get )
 
-        val avgLength = (itemsNewWithText.map( _.text.length ).sum + itemsSeen.map(i => seenLength(i.link)).sum) /
+        // add new items to seen map
+        itemsNewWithText.foreach( item => {
+          newSeenLength.update(item.link, item.text.length)
+        })
+
+        val avgLength = (itemsNewWithText.map( _.text.length ).sum + itemsSeen.map(i => lastSeenLength(i.link)).sum) /
           Math.max(itemsNewWithText.length + itemsSeen.length, 0)
 
         val shortArticle = (item: Item) => item.text.length < avgLength/4
