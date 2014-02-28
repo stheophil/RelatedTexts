@@ -23,7 +23,7 @@ object TestStemmer {
 }
 
 object FeedMatcher {
-  class Statement(override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
+  case class Statement(override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
 
   def initialize(file: String, stopwords: String, corpus: String, outName: String) {
     val analyzer = new Analyzer(

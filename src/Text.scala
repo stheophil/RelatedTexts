@@ -83,7 +83,7 @@ package text {
       )
     }
   }
-  class TextMatch[B](val value: Double, val words: Seq[(String, Double)], val matched: B)
+  case class TextMatch[B](val value: Double, val words: Seq[(String, Double)], val matched: B)
 
   class Analyzer[T<:Analyzable](analyzables: Seq[T], stopwordsFile: String, corpusFile: Option[String]) extends Serializable {
     // http://snowball.tartarus.org/algorithms/german/stop.txt
