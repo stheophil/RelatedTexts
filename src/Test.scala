@@ -35,47 +35,45 @@ object FeedMatcher {
     )
     serialize(outName, analyzer)
   }
+  type AnalyzableItem = feed.Item with Analyzable
+  type SeenFeedItems = collection.mutable.Map[String, (Int, Date)] // url, length, date to first seen time
+  type BestMatches = collection.mutable.SortedSet[(Statement, TextMatch[AnalyzableItem])]
 
-  case class FeedItem(val item: Item, override val text: String) extends Analyzable
+  implicit val orderByMatchValue = Ordering.by[(Statement, TextMatch[AnalyzableItem]), Double](_._2.value)
 
-  type SeenArticles = collection.mutable.Map[String, (Int, Date)] // url, length, date to first seen time
-  type BestMatches = collection.mutable.SortedSet[(Statement, TextMatch[FeedItem])]
-
-  implicit val orderByMatchValue = Ordering.by[(Statement, TextMatch[FeedItem]), Double](_._2.value)
-
-  def update(feeds: List[String], analyzer: Analyzer[Statement], articlesSeen: SeenArticles, matches: BestMatches) {
+  def update(feeds: List[String], analyzer: Analyzer[Statement], feeditemsSeen: SeenFeedItems, matches: BestMatches) {
     import scala.concurrent._
     import scala.concurrent.ExecutionContext.Implicits.global
 
     var timeStart = new Date().getTime()
-    val articles =
+    val feeditems =
       Await.result(
         Future.sequence( feeds.map( url => {
           future {
-            feed.Feed.newExtractedTexts(
+            feed.Feed.newItemsWithText(
               url,
-              articlesSeen.get(_).map(_._1).getOrElse(0) // length of seen article or 0
+              feeditemsSeen.get(_).map(_._1).getOrElse(0) // length of seen article or 0
             ).map(
-                itemtxt => new FeedItem(itemtxt._1, itemtxt._2.text)
-              )
+              item => new Item(item.title, item.link, item.text) with Analyzable
+            )
           }
         })),
         duration.Duration(5, duration.MINUTES)
       ).flatten
 
     // add new articles to "seen" map
-    articles.foreach( feedstat => {
-      articlesSeen.update(feedstat.item.link, (feedstat.text.length, new Date()))
+    feeditems.foreach( item => {
+      feeditemsSeen.update(item.link, (item.text.length, new Date()))
     })
     var timeEnd = new Date().getTime()
-    Console.println("[Info] Read and scraped " + articles.length + " texts in " + (timeEnd - timeStart) + " ms" )
+    Console.println("[Info] Read and scraped " + feeditems.length + " texts in " + (timeEnd - timeStart) + " ms" )
 
     timeStart = new Date().getTime()
 
     // folding best matches into matches would be more elegant
-    matches ++= analyzer.bestMatches(articles, 100).takeRight(100)
+    matches ++= analyzer.bestMatches(feeditems, 100).takeRight(100)
     timeEnd = new Date().getTime()
-    Console.println("[Info] Analyzed " + articles.length + " texts in " + (timeEnd - timeStart) + " ms" )
+    Console.println("[Info] Analyzed " + feeditems.length + " texts in " + (timeEnd - timeStart) + " ms" )
   }
 
   def serialize[T](fileName: String, t: T) {
@@ -96,7 +94,7 @@ object FeedMatcher {
 
   def main(args: Array[String]) {
     val analyzedFile = "test/cdu_wahlversprechen_analyzed.txt"
-    val articlesSeenFile = "test/articles_seen.txt"
+    val feeditemsSeenFile = "test/articles_seen.txt"
     val matchesFile = "test/matches.txt"
     val jsonFile = "test/matches.json"
 
@@ -119,27 +117,27 @@ object FeedMatcher {
     )
 
     while(true) {
-      val articlesSeen = unserialize[SeenArticles](articlesSeenFile).getOrElse(
+      val feeditemsSeen = unserialize[SeenFeedItems](feeditemsSeenFile).getOrElse(
         collection.mutable.Map.empty[String, (Int, Date)]
       )
 
       val bestMatches = unserialize[BestMatches](matchesFile).getOrElse(
-        collection.mutable.SortedSet.empty[(Statement, TextMatch[FeedItem])]
+        collection.mutable.SortedSet.empty[(Statement, TextMatch[AnalyzableItem])]
       )
       // TODO: Erase old matches from bestMatches
 
       val matchesNew = update(
         feeds,
         unserialize[Analyzer[Statement]](analyzedFile).get,
-        /*in/out*/ articlesSeen,
+        /*in/out*/ feeditemsSeen,
         /*in/out*/ bestMatches
       )
 
-      // TODO: Resulting articlesSeen should only contain the links found in this update.
+      // TODO: Resulting feeditemsSeen should only contain the links found in this update.
       // When articles disappear from RSS feed and then later reappear in the feed,
       // they are presumably updated
 
-      serialize(articlesSeenFile, articlesSeen)
+      serialize(feeditemsSeenFile, feeditemsSeen)
       serialize(matchesFile, bestMatches)
 
       val matchesByStatement = bestMatches.
@@ -147,6 +145,7 @@ object FeedMatcher {
         sortBy(_._2.last._2.value). // sort by highest match value
         reverse
 
+      // TODO: Replace hand rolled JSON output
       val fileJSON = new FileWriter(jsonFile)
       fileJSON.append("{ matches : [ \n");
       matchesByStatement.foreach( {
@@ -161,8 +160,8 @@ object FeedMatcher {
             fileJSON.append(" articles : { \n")
             bestMatches.foreach( textmatch => {
               fileJSON.append("\t{ \n")
-              fileJSON.append("\ttitle : \"" + textmatch.matched.item.title.replace('\"', '\'') + "\",\n")
-              fileJSON.append("\turl : \"" + textmatch.matched.item.link + "\",\n")
+              fileJSON.append("\ttitle : \"" + textmatch.matched.title.replace('\"', '\'') + "\",\n")
+              fileJSON.append("\turl : \"" + textmatch.matched.link + "\",\n")
               fileJSON.append("\tpoints : " + textmatch.value + ",\n")
               fileJSON.append("\tmatched : \"" + textmatch.words.toString.filter(!_.equals('\"')) + "\"\n")
 

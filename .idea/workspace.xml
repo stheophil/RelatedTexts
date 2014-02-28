@@ -56,7 +56,7 @@
       </breakpoint>
     </breakpoint_any>
     <line_breakpoints default_suspend_policy="SuspendAll" default_condition_enabled="true">
-      <breakpoint url="file://$PROJECT_DIR$/src/Test.scala" line="97" class="FeedMatcher$" package="">
+      <breakpoint url="file://$PROJECT_DIR$/src/Test.scala" line="139" class="FeedMatcher$" package="">
         <option name="ENABLED" value="true" />
         <option name="LOG_ENABLED" value="false" />
         <option name="LOG_EXPRESSION_ENABLED" value="false" />
@@ -84,9 +84,10 @@
       <file leaf-file-name="Test.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/Test.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="185" column="29" selection-start="7182" selection-end="7182" vertical-scroll-proportion="0.8704819" vertical-offset="2471" max-vertical-offset="2925">
+            <state line="124" column="79" selection-start="4967" selection-end="4967" vertical-scroll-proportion="0.6762712" vertical-offset="1461" max-vertical-offset="2925">
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
+                <element signature="e#1838#1863#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -104,7 +105,7 @@
       <file leaf-file-name="Text.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/Text.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="85" column="7" selection-start="3366" selection-end="3366" vertical-scroll-proportion="-3.3076923" vertical-offset="1189" max-vertical-offset="2100">
+            <state line="41" column="10" selection-start="1532" selection-end="1532" vertical-scroll-proportion="-5.6153846" vertical-offset="469" max-vertical-offset="2100">
               <folding />
             </state>
           </provider>
@@ -113,7 +114,7 @@
       <file leaf-file-name="Feed.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/Feed.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="17" column="6" selection-start="709" selection-end="709" vertical-scroll-proportion="0.0" vertical-offset="12" max-vertical-offset="1095">
+            <state line="56" column="51" selection-start="2164" selection-end="2164" vertical-scroll-proportion="0.0" vertical-offset="15" max-vertical-offset="1080">
               <folding />
             </state>
           </provider>
@@ -190,8 +191,8 @@
         <option value="$PROJECT_DIR$/.idea/libraries/scala_library.xml" />
         <option value="$PROJECT_DIR$/RelatedTexts.iml" />
         <option value="$PROJECT_DIR$/test/cdu_wahlversprechen_analyzed.txt" />
-        <option value="$PROJECT_DIR$/src/Feed.scala" />
         <option value="$PROJECT_DIR$/src/Text.scala" />
+        <option value="$PROJECT_DIR$/src/Feed.scala" />
         <option value="$PROJECT_DIR$/src/Test.scala" />
       </list>
     </option>
@@ -649,7 +650,7 @@
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="SBT Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.52657604" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.14091471" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -721,6 +722,7 @@
         <state line="83" column="40" selection-start="2940" selection-end="2940" vertical-scroll-proportion="0.0" vertical-offset="375" max-vertical-offset="2370">
           <folding>
             <element signature="e#0#13#0" expanded="true" />
+            <element signature="e#1838#1863#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -764,6 +766,7 @@
         <state line="38" column="91" selection-start="1405" selection-end="1405" vertical-scroll-proportion="0.0" vertical-offset="570" max-vertical-offset="1770">
           <folding>
             <element signature="e#0#13#0" expanded="true" />
+            <element signature="e#1838#1863#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -928,16 +931,16 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/Feed.scala">
+    <entry file="file://$PROJECT_DIR$/src/Text.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="17" column="6" selection-start="709" selection-end="709" vertical-scroll-proportion="0.0" vertical-offset="12" max-vertical-offset="1095">
+        <state line="41" column="10" selection-start="1532" selection-end="1532" vertical-scroll-proportion="-5.6153846" vertical-offset="469" max-vertical-offset="2100">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/test/matches.json">
+    <entry file="file://$PROJECT_DIR$/src/Feed.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="23" column="22" selection-start="1624" selection-end="1624" vertical-scroll-proportion="0.7823129" vertical-offset="0" max-vertical-offset="20355">
+        <state line="56" column="51" selection-start="2164" selection-end="2164" vertical-scroll-proportion="0.0" vertical-offset="15" max-vertical-offset="1080">
           <folding />
         </state>
       </provider>
@@ -949,18 +952,12 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/Text.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="85" column="7" selection-start="3366" selection-end="3366" vertical-scroll-proportion="-3.3076923" vertical-offset="1189" max-vertical-offset="2100">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/Test.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="185" column="29" selection-start="7182" selection-end="7182" vertical-scroll-proportion="0.8704819" vertical-offset="2471" max-vertical-offset="2925">
+        <state line="124" column="79" selection-start="4967" selection-end="4967" vertical-scroll-proportion="0.6762712" vertical-offset="1461" max-vertical-offset="2925">
           <folding>
             <element signature="e#0#13#0" expanded="true" />
+            <element signature="e#1838#1863#0" expanded="true" />
           </folding>
         </state>
       </provider>

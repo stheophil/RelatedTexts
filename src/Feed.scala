@@ -2,19 +2,18 @@ import org.jsoup.Jsoup
 import scala.util.{Try, Success, Failure}
 
 package feed {
-  class ExtractedText(paragraphs: Seq[String]) {
-    // Filters noise by removing all paragraphs below avg length
-    // Documents should be filtered similarly using global statistics
-    val avgLength = paragraphs.map( _.length ).sum / paragraphs.length
-    val text = paragraphs.filter(_.length >= avgLength).mkString(" ")
-  }
-
-  class Item(val title : String, val link: String) extends Serializable {
-    def extract : Try[ExtractedText] = {
+  case class Item(title : String, link: String, text: String) {
+    def withText : Try[Item] = {
       try {
         import scala.collection.JavaConversions._
         val html = Jsoup.connect(link).get();
-        Success( new ExtractedText(html.select("p").map(_.text())) )
+
+        // Filters noise by removing all paragraphs below avg length
+        // Documents should be filtered similarly using global statistics
+        val paragraphs = html.select("p").map(_.text())
+        val avgLength = paragraphs.map( _.length ).sum / paragraphs.length
+        val text = paragraphs.filter(_.length >= avgLength).mkString(" ")
+        Success(Item(title, link, text))
       } catch {
         case e: Exception =>
           Failure(e)
@@ -29,37 +28,37 @@ package feed {
           _.child.filter(_.label=="item").map( item => {
             val opttitle = item.child.find(_.label == "title").map(_.text)
             val optlink = item.child.find( _.label == "link").map(_.text)
-            new Item(opttitle.getOrElse(""), optlink.get)
+            Item(opttitle.getOrElse(""), optlink.get, "")
           })
         )
       }
   }
 
   object Feed {
-    def newExtractedTexts(url: String, seenLength: (String) => Int) : Seq[(Item, ExtractedText)] = {
+    def newItemsWithText(url: String, seenLength: (String) => Int) : Seq[Item] = {
       try {
         val feed = new Feed(url)
         val itemsAll = feed.items
         val itemsSeen = itemsAll.filter(item => seenLength(item.link)>0 )
 
-        val itemdoc = itemsAll.filter( item => seenLength(item.link)<=0 ).
-          map( item => (item, item.extract) ). // scrape feed on demand
-          filter( _._2.isSuccess ).
-          map( itemdoc => (itemdoc._1, itemdoc._2.get) )
+        val itemsNewWithText = itemsAll.filter( item => seenLength(item.link)<=0 ).
+          map( item => item.withText ). // scrape feed on demand
+          filter( _.isSuccess ).
+          map( _.get )
 
-        val avgLength = (itemdoc.map( _._2.text.length ).sum + itemsSeen.map(i => seenLength(i.link)).sum) /
-          Math.max(itemdoc.length + itemsSeen.length, 0)
+        val avgLength = (itemsNewWithText.map( _.text.length ).sum + itemsSeen.map(i => seenLength(i.link)).sum) /
+          Math.max(itemsNewWithText.length + itemsSeen.length, 0)
 
-        val shortArticle = (itemdoc: (Item, ExtractedText)) => itemdoc._2.text.length < avgLength/4
-        itemdoc.filter( shortArticle ).foreach( itemdoc =>
-          Console.println("[Warning] Document too short: " + itemdoc._1.link + " / " + itemdoc._2.text.length)
+        val shortArticle = (item: Item) => item.text.length < avgLength/4
+        itemsNewWithText.filter( shortArticle ).foreach( item =>
+          Console.println("[Warning] Document too short: " + item.link + " / " + item.text.length)
         )
 
-        itemdoc.filter( !shortArticle(_) )
+        itemsNewWithText.filter( !shortArticle(_) )
       } catch {
         case e: Exception => {
           Console.println("[Error] Failed to read feed: " + url + " : " + e.getMessage)
-          Seq.empty[(Item, ExtractedText)]
+          Seq.empty[Item]
         }
       }
     }
