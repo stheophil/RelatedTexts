@@ -9,7 +9,7 @@ package feed {
     val text = paragraphs.filter(_.length >= avgLength).mkString(" ")
   }
 
-  class Item(val title : String, val link: String) {
+  class Item(val title : String, val link: String) extends Serializable {
     def extract : Try[ExtractedText] = {
       try {
         import scala.collection.JavaConversions._

@@ -1,6 +1,6 @@
 package text {
 
-  class TextStatistics(text: String, stopwords: Set[String]) {
+  class TextStatistics(text: String, stopwords: Set[String]) extends Serializable {
     val regexSeparator = "[^\\wÄÖÜäöüß]+"
 
     val ngramCount = countNGrams(text.
@@ -42,7 +42,7 @@ package text {
     def keywords: Seq[String] = Seq.empty[String]
   }
 
-  class WeightedStatistics[T<:Analyzable](val analyzable: T, txtstatGlobal: TextStatistics, stopwords: Set[String] ) {
+  class WeightedStatistics[T<:Analyzable](val analyzable: T, txtstatGlobal: TextStatistics, stopwords: Set[String] ) extends Serializable {
     private val keywordStems = analyzable.keywords.map(GermanStemmer(_)).toSet
 
     // Currently, matches are not worth more the longer the ngram.
@@ -85,9 +85,9 @@ package text {
   }
   class TextMatch[B](val value: Double, val words: Seq[(String, Double)], val matched: B)
 
-  class Analyzer[T<:Analyzable](analyzables: Seq[T]) {
+  class Analyzer[T<:Analyzable](analyzables: Seq[T], stopwordsFile: String, corpusFile: Option[String]) extends Serializable {
     // http://snowball.tartarus.org/algorithms/german/stop.txt
-    val stopWords = io.Source.fromFile("test/stopwords.txt", "UTF-8").getLines().toList.flatMap(
+    val stopWords = io.Source.fromFile(stopwordsFile, "UTF-8").getLines().toList.flatMap(
       line => {
         val idxComment = line.indexOf("|")
         val text = line.substring(0, if(idxComment == -1) { line.length } else { idxComment }).trim
@@ -100,9 +100,9 @@ package text {
     ).toSet
 
     val corpus = new TextStatistics(
-        (io.Source.
-          fromURL("http://www.gutenberg.org/cache/epub/34811/pg34811.txt", "UTF-8").
-          getLines() ++ // Buddenbrocks
+        (corpusFile.map( file => io.Source.
+          fromFile(file, "UTF-8").
+          getLines()).getOrElse(Iterator.empty) ++ // Buddenbrocks
           analyzables.map(_.text) ++
           analyzables.flatMap(_.keywords)).mkString("\n"),
       stopWords)
