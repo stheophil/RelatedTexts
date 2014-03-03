@@ -4,8 +4,9 @@ import scala.util.{Try, Success, Failure}
 package feed {
 
 import java.util.Date
+import java.net.URL
 
-case class Item(title : String, link: String, text: String) {
+case class Item(title : String, link: String, text: String, faviconUrl: String) {
     def withText : Try[Item] = {
       try {
         import scala.collection.JavaConversions._
@@ -16,7 +17,39 @@ case class Item(title : String, link: String, text: String) {
         val paragraphs = html.select("p").map(_.text())
         val avgLength = paragraphs.map( _.length ).sum / paragraphs.length
         val text = paragraphs.filter(_.length >= avgLength).mkString(" ")
-        Success(Item(title, link, text))
+
+        val favicon = html.select("link[rel=shortcut icon]")
+        // <link href="http://www.sueddeutsche.de/favicon.ico" rel="shortcut icon" type="image/ico">
+        val faviconUrl = if(favicon.isEmpty() || !favicon.attr("type").endsWith("png"))  {
+          val aIcons = html.select("link[rel^=apple-touch-icon]").toIndexedSeq
+          aIcons.sortBy( icon => {
+            val sizeDefault = 57 // iPhone default size?
+            val aSizes = icon.attr("sizes").split('x')
+
+            if(aSizes.length==2) {
+              try {
+                aSizes(0).toInt
+              } catch {
+                case e: NumberFormatException => sizeDefault
+              }
+            } else {
+              sizeDefault
+            }
+          })
+          // <link rel="apple-touch-icon" href="http://polpix.sueddeutsche.com/staticassets/img/touch-icon-iphone.png">
+          if(aIcons.isEmpty) {
+            None
+          } else {
+            Some(aIcons.head.attr("href"))
+          }
+        } else {
+          Some(favicon.attr("href"))
+        }
+
+        val faviconAbsoluteUrl = faviconUrl.map( url =>
+          new java.net.URL(new URL(link), url).toString
+        )
+        Success(Item(title, link, text, faviconAbsoluteUrl.getOrElse("")))
       } catch {
         case e: Exception =>
           Failure(e)
@@ -31,7 +64,7 @@ case class Item(title : String, link: String, text: String) {
           _.child.filter(_.label=="item").map( item => {
             val opttitle = item.child.find(_.label == "title").map(_.text)
             val optlink = item.child.find( _.label == "link").map(_.text)
-            Item(opttitle.getOrElse(""), optlink.get, "")
+            Item(opttitle.getOrElse(""), optlink.get, "", "")
           })
         )
       }

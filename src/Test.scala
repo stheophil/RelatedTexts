@@ -59,7 +59,7 @@ object FeedMatcher {
               mapUrlToLengthLastRun.get(_).getOrElse(0), // length of seen article or 0
               /* out */ mapUrlToLength
             ).map(
-              item => new Item(item.title, item.link, item.text) with Analyzable
+              item => new Item(item.title, item.link, item.text, item.faviconUrl) with Analyzable
             )
           }
         })),
