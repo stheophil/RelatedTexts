@@ -4,6 +4,41 @@
  | The number of forms in this list is reduced significantly by passing it
  | through the German stemmer.
 
+eins
+zwei
+drei
+vier
+fünf
+sechs
+sieben
+acht
+neun
+zehn
+hundert
+einhundert
+tausend
+million
+milliarde
+prozent
+euro
+
+berlin
+brandenburg
+mecklenburg
+vorpommern
+sachsen
+anhalt
+thüringen
+hessen
+schleswig
+holstein
+niedersachsen
+nordrhein
+westfalen
+bayern
+baden
+württemberg
+saarland
 
 aber           |  but
 

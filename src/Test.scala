@@ -23,6 +23,55 @@ object TestStemmer {
   }
 }
 
+import play.api.libs.json._ // JSON library
+import play.api.libs.json.Reads._ // Custom validation helpers
+import play.api.libs.functional.syntax._ // Combinator syntax
+
+object StatTest {
+  case class InputStatement(id: Int, title: String, quote: String, tags: Seq[String])
+  case class OutputStatement(id: Int, title: String, filtered_text: Seq[String], tags: Seq[String])
+
+  implicit val statementReads: Reads[InputStatement] = (
+    (JsPath \ "id").read[Int] and
+      (JsPath \ "title").read[String] and
+      (JsPath \ "quote").read[String] and
+      (JsPath \ "tags").read[Seq[String]]
+    )(InputStatement.apply _)
+
+  implicit val outputStatementWrites: Writes[OutputStatement] = (
+    (JsPath \ "id").write[Int] and
+      (JsPath \ "title").write[String] and
+      (JsPath \ "filtered_text").write[Seq[String]] and
+      (JsPath \ "tags").write[Seq[String]]
+    )(unlift(OutputStatement.unapply))
+
+  def main(args: Array[String]) {
+    val jsonString = io.Source.fromFile("test/koalitionsvertrag.json").getLines().mkString("\n")
+    val json: JsValue = Json.parse(jsonString)
+    val result: JsResult[Seq[InputStatement]] = json.validate[Seq[InputStatement]]
+
+    val top1kWords = (for(line <- io.Source.fromFile("test/top1000de.txt", "UTF-16").getLines) yield
+      GermanStemmer(line)
+     ).toSet
+
+    result match {
+      case s: JsSuccess[Seq[InputStatement]] => {
+        val output = s.get.map{ input =>
+          val filtered_text = input.title + " " + input.quote
+          val analytics = new text.TextStatistics(filtered_text, top1kWords)
+          OutputStatement(input.id, input.title, analytics.ngramCount(0).toSeq.map(_._1.mkString), input.tags)
+        }
+
+        val json = Json.toJson(output)
+        val file = new FileWriter("test/koalition_filtered.json")
+        file.write(json.toString())
+        file.close()
+      }
+      case e: JsError => println("Errors: " + JsError.toFlatJson(e).toString())
+    }
+  }
+}
+
 object FeedMatcher {
   case class Statement(override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
 
@@ -97,7 +146,7 @@ object FeedMatcher {
     val analyzedFile = "test/cdu_wahlversprechen_analyzed.txt"
     val feeditemsSeenFile = "test/articles_seen.txt"
     val matchesFile = "test/matches.txt"
-    val jsonFile = "test/matches.json"
+    val jsonFile = "/Users/sebastian/Dropbox/matches.json"
 
     val feeds = List("http://rss.sueddeutsche.de/rss/Politik",
       "http://www.welt.de/politik/deutschland/?service=Rss",
