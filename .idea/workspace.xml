@@ -99,9 +99,11 @@
       <file leaf-file-name="Test.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/Test.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.33184856" vertical-offset="886" max-vertical-offset="3675">
-              <caret line="76" column="0" selection-start-line="76" selection-start-column="0" selection-end-line="76" selection-end-column="0" />
-              <folding />
+            <state vertical-scroll-proportion="-0.8516746" vertical-offset="3461" max-vertical-offset="3900">
+              <caret line="213" column="0" selection-start-line="213" selection-start-column="0" selection-end-line="213" selection-end-column="0" />
+              <folding>
+                <element signature="e#921#948#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -156,21 +158,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="matches.json" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/test/matches.json">
-          <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="4170" max-vertical-offset="36630">
-              <caret line="304" column="103" selection-start-line="304" selection-start-column="103" selection-end-line="304" selection-end-column="103" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="Text.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/Text.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="2100">
-              <caret line="33" column="29" selection-start-line="33" selection-start-column="29" selection-end-line="33" selection-end-column="81" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="939" max-vertical-offset="1815">
+              <caret line="73" column="49" selection-start-line="73" selection-start-column="49" selection-end-line="73" selection-end-column="49" />
               <folding />
             </state>
           </provider>
@@ -203,7 +195,6 @@
         <option value="$PROJECT_DIR$/.idea/libraries/scala_library.xml" />
         <option value="$PROJECT_DIR$/RelatedTexts.iml" />
         <option value="$PROJECT_DIR$/test/cdu_wahlversprechen_analyzed.txt" />
-        <option value="$PROJECT_DIR$/src/Text.scala" />
         <option value="$PROJECT_DIR$/src/Feed.scala" />
         <option value="$PROJECT_DIR$/test/stopwords.txt" />
         <option value="$PROJECT_DIR$/test/matches.json" />
@@ -211,6 +202,7 @@
         <option value="$USER_HOME$/.m2/settings.xml" />
         <option value="$PROJECT_DIR$/test/top1000de.txt" />
         <option value="$PROJECT_DIR$/src/Test.scala" />
+        <option value="$PROJECT_DIR$/src/Text.scala" />
       </list>
     </option>
   </component>
@@ -379,7 +371,7 @@
     <property name="Repository.Attach.JavaDocs" value="false" />
     <property name="Repository.Attach.Sources" value="false" />
   </component>
-  <component name="RunManager" selected="Application.StatTest">
+  <component name="RunManager" selected="Application.FeedMatcher">
     <configuration default="false" name="Scala Console" type="ScalaScriptConsoleRunConfiguration" factoryName="Scala Console" temporary="true">
       <module name="RelatedTexts" />
       <setting name="vmparams4" value="-Djline.terminal=NONE" />
@@ -618,8 +610,8 @@
     </list>
     <recent_temporary>
       <list size="3">
-        <item index="0" class="java.lang.String" itemvalue="Application.StatTest" />
-        <item index="1" class="java.lang.String" itemvalue="Application.FeedMatcher" />
+        <item index="0" class="java.lang.String" itemvalue="Application.FeedMatcher" />
+        <item index="1" class="java.lang.String" itemvalue="Application.StatTest" />
         <item index="2" class="java.lang.String" itemvalue="Application.TestStemmer" />
       </list>
     </recent_temporary>
@@ -674,7 +666,7 @@
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="SBT Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.38195303" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.4487021" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -718,18 +710,12 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/Test.scala</url>
-          <line>197</line>
+          <line>213</line>
           <properties />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/Test.scala</url>
-          <line>129</line>
-          <properties />
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/Test.scala</url>
-          <line>76</line>
+          <line>81</line>
           <properties />
           <option name="timeStamp" value="3" />
         </line-breakpoint>
@@ -791,7 +777,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="375" max-vertical-offset="2370">
           <caret line="83" column="40" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <folding>
+            <element signature="e#921#948#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -843,7 +831,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="570" max-vertical-offset="1770">
           <caret line="38" column="91" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <folding>
+            <element signature="e#921#948#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -1071,14 +1061,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/test/matches.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="4170" max-vertical-offset="36630">
-          <caret line="304" column="103" selection-start-line="304" selection-start-column="103" selection-end-line="304" selection-end-column="103" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/test/stopwords.txt">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="31" max-vertical-offset="4860">
@@ -1097,24 +1079,27 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/test/top1000de.txt">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.30066815" vertical-offset="0" max-vertical-offset="15090">
-          <caret line="9" column="4" selection-start-line="9" selection-start-column="4" selection-end-line="9" selection-end-column="4" />
+        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="626">
+          <caret line="0" column="23" selection-start-line="0" selection-start-column="23" selection-end-line="0" selection-end-column="23" />
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/Text.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="90" max-vertical-offset="2100">
-          <caret line="33" column="29" selection-start-line="33" selection-start-column="29" selection-end-line="33" selection-end-column="81" />
+        <state vertical-scroll-proportion="0.0" vertical-offset="939" max-vertical-offset="1815">
+          <caret line="73" column="49" selection-start-line="73" selection-start-column="49" selection-end-line="73" selection-end-column="49" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/Test.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.33184856" vertical-offset="886" max-vertical-offset="3675">
-          <caret line="76" column="0" selection-start-line="76" selection-start-column="0" selection-end-line="76" selection-end-column="0" />
-          <folding />
+        <state vertical-scroll-proportion="-0.8516746" vertical-offset="3461" max-vertical-offset="3900">
+          <caret line="213" column="0" selection-start-line="213" selection-start-column="0" selection-end-line="213" selection-end-column="0" />
+          <folding>
+            <element signature="e#921#948#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

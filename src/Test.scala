@@ -27,9 +27,9 @@ import play.api.libs.json._ // JSON library
 import play.api.libs.json.Reads._ // Custom validation helpers
 import play.api.libs.functional.syntax._ // Combinator syntax
 
-object StatTest {
+object JSON {
+  // JSON format of www.wahlversprechen2013.de/json/author/Koalitionsvertrag
   case class InputStatement(id: Int, title: String, quote: String, tags: Seq[String])
-  case class OutputStatement(id: Int, title: String, filtered_text: Seq[String], tags: Seq[String])
 
   implicit val statementReads: Reads[InputStatement] = (
     (JsPath \ "id").read[Int] and
@@ -37,7 +37,12 @@ object StatTest {
       (JsPath \ "quote").read[String] and
       (JsPath \ "tags").read[Seq[String]]
     )(InputStatement.apply _)
+}
 
+object StatTest {
+  import JSON._
+
+  case class OutputStatement(id: Int, title: String, filtered_text: Seq[String], tags: Seq[String])
   implicit val outputStatementWrites: Writes[OutputStatement] = (
     (JsPath \ "id").write[Int] and
       (JsPath \ "title").write[String] and
@@ -58,8 +63,8 @@ object StatTest {
       case s: JsSuccess[Seq[InputStatement]] => {
         val inputWordSeq = s.get.map{ input =>
           val filtered_text = input.title + " " + input.quote
-          val analytics = new text.TextStatistics(filtered_text, top1kWords)
-          (input, analytics.ngramCount(0).toSeq.map(_._1.mkString))
+          val analytics = TextStatistics(filtered_text, Seq.empty[String], top1kWords)
+          (input, analytics.ngramCount.toSeq.map(_._1.mkString))
         }
 
         val wordCount = inputWordSeq.map( _._2 ).flatten.
@@ -85,18 +90,23 @@ object StatTest {
 }
 
 object FeedMatcher {
-  case class Statement(override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
+  case class Statement(title: String, override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
 
-  def initialize(file: String, stopwords: String, corpus: String, outName: String) {
+  def initialize(seqInputs: Seq[JSON.InputStatement], stopwords: io.Source, outName: String) {
     val analyzer = new Analyzer(
-      (for(line <- io.Source.fromFile(file).getLines) yield
-        new Statement(line, Seq.empty[String], "")
-        ).toList,
-      stopwords,
-      Some(corpus)
+      seqInputs.map( input =>
+        Statement(
+          input.title,
+          input.title + " " + input.quote,
+          input.tags,
+          "http://www.wahlversprechen2013.de/item/" + input.id
+        )
+      ),
+      stopwords
     )
     serialize(outName, analyzer)
   }
+
   type AnalyzableItem = feed.Item with Analyzable
   type MapItemUrlLength = collection.mutable.SynchronizedMap[String, Int] // url -> length
   type BestMatches = collection.mutable.SortedSet[(Statement, TextMatch[AnalyzableItem])]
@@ -154,8 +164,10 @@ object FeedMatcher {
     case e: FileNotFoundException => None
   }
 
+  import JSON._
+
   def main(args: Array[String]) {
-    val analyzedFile = "test/cdu_wahlversprechen_analyzed.txt"
+    val analyzedFile = "test/koalition_analyzed.txt"
     val feeditemsSeenFile = "test/articles_seen.txt"
     val matchesFile = "test/matches.txt"
     val jsonFile = "/Users/sebastian/Dropbox/matches.json"
@@ -172,9 +184,13 @@ object FeedMatcher {
       "http://www.bundesregierung.de/SiteGlobals/Functions/RSSFeed/DE/RSSNewsfeed/RSS_Breg_artikel/RSSNewsfeed.xml?nn=392282"
     )
 
-    initialize("test/cdu_wahlversprechen.txt",
-      "test/stopwords.txt",
-      "test/cdu_wahlprogramm.txt",
+    // TODO: text fields contain markdown text => filter link urls
+    val jsonString = io.Source.fromFile("test/koalitionsvertrag.json").getLines().mkString("\n")
+    val json: JsValue = Json.parse(jsonString)
+    val result: JsResult[Seq[InputStatement]] = json.validate[Seq[InputStatement]]
+
+    initialize(result.get,
+      io.Source.fromFile("test/top1000de.txt", "UTF-16"),
       analyzedFile
     )
 
@@ -198,46 +214,43 @@ object FeedMatcher {
       serialize(feeditemsSeenFile, feeditemsSeen)
       serialize(matchesFile, bestMatches)
 
+      case class ResultMatch(title: String, url: String, confidence: Double, matched: Seq[String])
+      case class Result(title: String, url: String, confidence: Double, articles: Seq[ResultMatch])
+
+      implicit val matchWrites: Writes[ResultMatch] = (
+        (JsPath \ "title").write[String] and
+          (JsPath \ "url").write[String] and
+          (JsPath \ "confidence").write[Double] and
+          (JsPath \ "matched").write[Seq[String]]
+        )(unlift(ResultMatch.unapply))
+
+      implicit val resultWrites: Writes[Result] = (
+        (JsPath \ "title").write[String] and
+          (JsPath \ "url").write[String] and
+          (JsPath \ "confidence").write[Double] and
+          (JsPath \ "articles").write[Seq[ResultMatch]]
+        )(unlift(Result.unapply))
+
       val matchesByStatement = bestMatches.
         groupBy(_._1).toArray. // by statement
         sortBy(_._2.last._2.value). // sort by highest match value
-        reverse
-
-      // TODO: Replace hand rolled JSON output
-      val fileJSON = new FileWriter(jsonFile)
-      fileJSON.append("{ matches : [ \n");
-      matchesByStatement.foreach( {
+        reverse.map{
         case (stmt, setMatches) => {
-          fileJSON.append(" { \n")
-          fileJSON.append(" title : \"\",\n")
-          fileJSON.append(" text : \"" + stmt.text.replace('\"', '\'') + "\",\n")
-          fileJSON.append(" url : \"" + stmt.url + "\",\n")
-          val bestMatches = setMatches.toList.reverse.slice(0,3).map(_._2)
-          fileJSON.append(" points : " + bestMatches.head.value + ",\n")
-
-            fileJSON.append(" articles : { \n")
-            bestMatches.foreach( textmatch => {
-              fileJSON.append("\t{ \n")
-              fileJSON.append("\ttitle : \"" + textmatch.matched.title.replace('\"', '\'') + "\",\n")
-              fileJSON.append("\turl : \"" + textmatch.matched.link + "\",\n")
-              fileJSON.append("\tpoints : " + textmatch.value + ",\n")
-              fileJSON.append("\tmatched : \"" + textmatch.words.toString.filter(!_.equals('\"')) + "\"\n")
-
-              if(bestMatches.last==textmatch) {
-                fileJSON.append("\t} \n")
-              } else {
-                fileJSON.append("\t}, \n")
-              }
-            })
-
-          if(matchesByStatement.last._1==stmt) {
-            fileJSON.append("} \n")
-          } else {
-            fileJSON.append("}, \n")
-          }
+          val bestMatches = setMatches.toList.reverse.slice(0,3).map(_._2).map( textmatch =>
+            ResultMatch(
+              textmatch.matched.title,
+              textmatch.matched.link,
+              textmatch.value,
+              textmatch.words.map( t => t._1 + ":" + t._2)
+            )
+          )
+          Result(stmt.title, stmt.url, bestMatches.head.confidence, bestMatches)
         }
-      })
-      fileJSON.append("]}");
+      }
+
+      val fileJSON = new FileWriter(jsonFile)
+      val jsonMatches = Json.toJson(matchesByStatement)
+      fileJSON.write(jsonMatches.toString())
       fileJSON.close()
 
       Thread.sleep(1000*60*10)

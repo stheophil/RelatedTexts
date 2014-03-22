@@ -1,21 +1,10 @@
 package text {
-
-  class TextStatistics(text: String, stopwords: Set[String]) extends Serializable {
-    val regexSeparator = "[^\\wÄÖÜäöüß]+"
-
-    val ngramCount = countNGrams(text.
-      split(regexSeparator).
-      map(s => GermanStemmer(s)).
-      filter( stem => !stopwords(stem) && !stem.forall(_.isDigit) ),
-      3) // max n-gram = 2
-
-    def apply(ngram: Seq[String]) : Int = {
-      require(0 < ngram.length )
-      require(ngram.length <= ngramCount.length)
-      ngramCount(ngram.length-1).getOrElse(ngram, 0)
+  class TextStatistics(val ngramCount: Map[String, Int], val keywords: Set[String]) extends Serializable {
+    def apply(ngram: String) : Int = {
+      ngramCount.getOrElse(ngram, 0)
     }
 
-    def weight(ngram: Seq[String]) : Double = {
+    def weight(ngram: String) : Double = {
       // Using 1/word count seems too strict. The value of more frequent words should fall off slower.
       // Words that occur only 1, 2 or 10 times in such long texts should probably be worth roughly the same.
       // A linear decreasing function however just amplified the noise
@@ -24,16 +13,26 @@ package text {
     }
 
     def maxWeight : Double = 1.0
+  }
 
-    private def countNGrams(words: Seq[String], n: Int) : IndexedSeq[Map[Seq[String], Int]] = {
-      // TODO: Build IndexedSeq[SortedMap[Seq[String], Int]] here. Counting text matches
-      // is calculating intersection of two maps.
-      require(words.isTraversableAgain)
-      (for(i <- 1 to n) yield {
-        words.sliding(i).foldLeft(Map.empty[Seq[String], Int]) {
-          (map, seqwords) => map + (seqwords -> (map.getOrElse(seqwords, 0) + 1))
+  object TextStatistics {
+    def apply(text: String, keywords: Seq[String], stopwords: Set[String]) : TextStatistics = {
+      val regexSeparator = "[^\\wÄÖÜäöüß]+"
+
+      val words = text.
+        split(regexSeparator).
+        map(s => GermanStemmer(s)).
+        filter( stem => !stopwords(stem) && !stem.forall(_.isDigit) )
+
+      val maxNGram = 3
+
+      val ngramCount = (for(i <- 1 to maxNGram) yield {
+        words.sliding(i).foldLeft(Map.empty[String, Int]) {
+          (map, seqwords) => map + (seqwords.mkString(" ") -> (map.getOrElse(seqwords.mkString(" "), 0) + 1))
         }
-      }).toIndexedSeq
+      }).flatten.toMap
+
+      new TextStatistics(ngramCount, keywords.map( GermanStemmer(_)).toSet)
     }
   }
 
@@ -42,52 +41,11 @@ package text {
     def keywords: Seq[String] = Seq.empty[String]
   }
 
-  class WeightedStatistics[T<:Analyzable](val analyzable: T, txtstatGlobal: TextStatistics, stopwords: Set[String] ) extends Serializable {
-    private val keywordStems = analyzable.keywords.map(GermanStemmer(_)).toSet
-
-    // Currently, matches are not worth more the longer the ngram.
-    // Since every word in a matching 2-gram also matches on its own, 2-grams are "worth more" automatically
-    val ngramWeights = new TextStatistics(analyzable.text, stopwords).ngramCount.toSeq.map(
-      _.map{
-          case (seqwords, count) => {
-            if(seqwords.length==1 && keywordStems(seqwords.head))
-              (seqwords, txtstatGlobal.maxWeight)
-            else
-              (seqwords, txtstatGlobal.weight(seqwords))
-          }
-      }
-    )
-
-    def score(statsOther: TextStatistics) : (Double, Seq[(String, Double)]) = {
-      // We ignore how often a word occurs in statsOther when computing the score.
-      // Too often, a single word may occur very often in a long enough text.
-      // What should count is the total number of (relevant) words that occur in a text.
-      // The relative number of matching words (relative to total number of words in text)
-      // would disadvantage longer texts.
-      // Therefore we still calculate absolute value of matches.
-      val ngramScores = ngramWeights.map(
-        _.map {
-          case (seqwords, weight) => (seqwords, Math.min(statsOther(seqwords), 1.0) * weight)
-        }.toList.filter(_._2>0)
-      )
-
-      (
-        ngramScores.foldLeft(0.0) {
-          case (sum, listSeqScore) => sum + listSeqScore.map(_._2).sum
-        },
-        ngramScores.flatten.
-          sortBy(_._2).
-          takeRight(5).map{
-          case (seqstr, f) => ("\"" + seqstr.mkString(" ") + "\"", f)
-        }
-      )
-    }
-  }
   case class TextMatch[B](val value: Double, val words: Seq[(String, Double)], val matched: B)
 
-  class Analyzer[T<:Analyzable](analyzables: Seq[T], stopwordsFile: String, corpusFile: Option[String]) extends Serializable {
+  class Analyzer[T<:Analyzable](analyzables: Seq[T], stopwordsFile: io.Source) extends Serializable {
     // http://snowball.tartarus.org/algorithms/german/stop.txt
-    val stopWords = io.Source.fromFile(stopwordsFile, "UTF-8").getLines().toList.flatMap(
+    val stopwords = stopwordsFile.getLines().toList.flatMap(
       line => {
         val idxComment = line.indexOf("|")
         val text = line.substring(0, if(idxComment == -1) { line.length } else { idxComment }).trim
@@ -99,25 +57,48 @@ package text {
       }
     ).toSet
 
-    val corpus = new TextStatistics(
-        (corpusFile.map( file => io.Source.
-          fromFile(file, "UTF-8").
-          getLines()).getOrElse(Iterator.empty) ++ // Buddenbrocks
-          analyzables.map(_.text) ++
-          analyzables.flatMap(_.keywords)).mkString("\n"),
-      stopWords)
+    val statistics = analyzables.map( a => (a, TextStatistics(a.text, a.keywords, stopwords)) )
+    val statisticsGlobal = new TextStatistics(
+      statistics.map( _._2.ngramCount.keys ).
+        flatten.
+        foldLeft(Map.empty[String, Int]){
+        case (map, str) => {
+          map + (str -> (map.getOrElse(str, 0) + 1))
+        }
+      },
+      Set.empty[String])
 
-    val entries = analyzables.map( new WeightedStatistics[T](_, corpus, stopWords) )
+    def score(statThis: TextStatistics, statOther: TextStatistics) : (Double, Seq[(String, Double)]) = {
+        val ngramCountWithGlobal = statThis.keywords.map(k => (k -> (1, 0))).toMap ++
+          statThis.ngramCount.map{ case(str, count) => {
+          (str -> (count, statisticsGlobal(str)))
+        }}.toMap
+
+        val matchingNgrams = ngramCountWithGlobal.filter{
+          case (str, (count, globalCount)) => 0<statOther(str)
+        }
+
+        // longer ngrams don't have a higher score themselves because a 2-gram usually implies
+        // two 1-grams too
+
+        // TODO: Normalize by number of ngrams in statThis?
+        // TODO: multiply with log(count) instead?
+        val scores = matchingNgrams.map{
+          case (str, (count, globalCount)) => (str, count * 1.0 / Math.max(1, globalCount) )
+        }.toSeq
+        (scores.map(_._2).sum, scores)
+    }
 
     def bestMatches[B<:Analyzable](texts: Seq[B], limit: Int) : Seq[(T, TextMatch[B])] = {
-      val textstats = texts.map( text => (text, new TextStatistics(text.text, stopWords)))
+      val statisticsOther = texts.map( text => (text, TextStatistics(text.text, text.keywords, stopwords)))
 
       implicit val order = Ordering.by[(T, TextMatch[B]), Double](_._2.value)
+
       var queue = scala.collection.immutable.SortedSet.empty[(T, TextMatch[B])]
-      textstats.foreach( textstat => {
-        entries.foreach( entry => {
-          val score = entry.score(textstat._2)
-          val element = (entry.analyzable, new TextMatch[B](score._1, score._2, textstat._1))
+      statisticsOther.foreach( textstat => {
+        statistics.foreach( textstatThis => {
+          val s = score(textstatThis._2, textstat._2)
+          val element = (textstatThis._1, new TextMatch[B](s._1, s._2, textstat._1))
           if(queue.size < limit) {
             queue = queue + element
           } else if(order.lt(queue.head, element)) {
