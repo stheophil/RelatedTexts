@@ -56,11 +56,23 @@ object StatTest {
 
     result match {
       case s: JsSuccess[Seq[InputStatement]] => {
-        val output = s.get.map{ input =>
+        val inputWordSeq = s.get.map{ input =>
           val filtered_text = input.title + " " + input.quote
           val analytics = new text.TextStatistics(filtered_text, top1kWords)
-          OutputStatement(input.id, input.title, analytics.ngramCount(0).toSeq.map(_._1.mkString), input.tags)
+          (input, analytics.ngramCount(0).toSeq.map(_._1.mkString))
         }
+
+        val wordCount = inputWordSeq.map( _._2 ).flatten.
+          foldLeft(Map.empty[String, Int])( (map, word) => {
+            map + (word -> (map.getOrElse(word, 0) + 1))
+        })
+
+        val output = inputWordSeq.map{ case (input, wordSeq) => {
+          val wordSeqFreq = wordSeq.
+            map{ word => (word, wordCount(word)) }.
+            sortBy(_._2).toSeq.map( t => t._1 + ":" + t._2)
+          OutputStatement( input.id, input.title, wordSeqFreq, input.tags )
+        }}
 
         val json = Json.toJson(output)
         val file = new FileWriter("test/koalition_filtered.json")
