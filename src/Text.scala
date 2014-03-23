@@ -69,12 +69,14 @@ package text {
       Set.empty[String])
 
     def score(statThis: TextStatistics, statOther: TextStatistics) : (Double, Seq[(String, Double)]) = {
-        val ngramCountWithGlobal = statThis.keywords.map(k => (k -> (1, 0))).toMap ++
-          statThis.ngramCount.map{ case(str, count) => {
+        val ngramCountWithGlobal = statThis.ngramCount.map{ case(str, count) => {
           (str -> (count, statisticsGlobal(str)))
-        }}.toMap
+        }}.toMap ++
+          statThis.keywords.map( // keywords override ngramCount
+            k => (k -> (statThis.ngramCount.getOrElse(k, 1), 1))
+          ).toMap
 
-        val matchingNgrams = ngramCountWithGlobal.filter{
+       val matchingNgrams = ngramCountWithGlobal.filter{
           case (str, (count, globalCount)) => 0<statOther(str)
         }
 

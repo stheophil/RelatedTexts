@@ -80,7 +80,7 @@ object StatTest {
         }}
 
         val json = Json.toJson(output)
-        val file = new FileWriter("test/koalition_filtered.json")
+        val file = new FileWriter("tmp/koalition_filtered.json")
         file.write(json.toString())
         file.close()
       }
@@ -167,10 +167,10 @@ object FeedMatcher {
   import JSON._
 
   def main(args: Array[String]) {
-    val analyzedFile = "test/koalition_analyzed.txt"
-    val feeditemsSeenFile = "test/articles_seen.txt"
-    val matchesFile = "test/matches.txt"
-    val jsonFile = "/Users/sebastian/Dropbox/matches.json"
+    val analyzedFile = "tmp/koalition_analyzed.txt"
+    val feeditemsSeenFile = "tmp/articles_seen.txt"
+    val matchesFile = "tmp/matches.txt"
+    val jsonFile = "tmp/matches.json"
 
     val feeds = List("http://rss.sueddeutsche.de/rss/Politik",
       "http://www.welt.de/politik/deutschland/?service=Rss",

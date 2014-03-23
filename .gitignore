@@ -1,10 +1,4 @@
 
 doc
 target
-test/articles_seen.txt
-
-test/cdu_wahlversprechen_analyzed.txt
-
-test/matches.txt
-
-test/matches.json
+tmp
