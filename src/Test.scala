@@ -89,19 +89,27 @@ object StatTest {
   }
 }
 
+import scala.util.matching.Regex.Match
+
 object FeedMatcher {
   case class Statement(title: String, override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
 
+  def removeMarkdownLink(text: String) : String = {
+    val markdownLink = """\[([^\]]*)\]\(([^\)]*)\)""".r("text", "href")
+    markdownLink.replaceAllIn( text, _ group "text" )
+  }
+
   def initialize(seqInputs: Seq[JSON.InputStatement], stopwords: io.Source, outName: String) {
+
     val analyzer = new Analyzer(
-      seqInputs.map( input =>
-        Statement(
-          input.title,
-          input.title + " " + input.quote,
-          input.tags,
-          "http://www.wahlversprechen2013.de/item/" + input.id
-        )
-      ),
+      seqInputs.map( input => {
+          Statement(
+            removeMarkdownLink(input.title),
+            removeMarkdownLink(input.title + " " + input.quote),
+            input.tags,
+            "http://www.wahlversprechen2013.de/item/" + input.id
+          )
+      }),
       stopwords
     )
     serialize(outName, analyzer)
