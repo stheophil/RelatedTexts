@@ -1,7 +1,8 @@
 package net.theophil.relatedtexts
 
 import scala.collection.mutable
-import java.io.{ObjectInputStream, ObjectOutputStream, FileInputStream, FileOutputStream, FileNotFoundException, FileWriter}
+import java.io.{FileOutputStream, OutputStreamWriter}
+import java.nio.charset.Charset
 import java.util.Date
 
 object TestStemmer {
@@ -79,9 +80,12 @@ object StatTest {
         }}
 
         val json = Json.toJson(output)
-        val file = new FileWriter("tmp/koalition_filtered.json")
+        
+        val fos = new FileOutputStream("tmp/koalition_filtered.json")
+        val file = new OutputStreamWriter(fos, Charset.forName("UTF-8"))
         file.write(json.toString())
         file.close()
+        fos.close()
       }
       case e: JsError => println("Errors: " + JsError.toFlatJson(e).toString())
     }
@@ -112,7 +116,7 @@ object FeedMatcherTest {
       "http://www.bundesregierung.de/SiteGlobals/Functions/RSSFeed/DE/RSSNewsfeed/RSS_Breg_artikel/RSSNewsfeed.xml?nn=392282"
     )
 
-    val jsonString = io.Source.fromFile("test/koalitionsvertrag.json").getLines().mkString("\n")
+    val jsonString = io.Source.fromFile("test/koalitionsvertrag.json", "UTF-8").getLines().mkString("\n")
     val json: JsValue = Json.parse(jsonString)
     val seqInputs: JsResult[Seq[InputStatement]] = json.validate[Seq[InputStatement]]
 
@@ -127,10 +131,14 @@ object FeedMatcherTest {
 
     FeedMatcher(feeds, statements, 100, FeedMatcherCache.fromFile(cacheFile)) match {
       case (results, cache) => {
-        val fileJSON = new FileWriter(jsonFile)
+        val fos = new FileOutputStream(jsonFile)
+        val fileJSON = new OutputStreamWriter(fos, Charset.forName("UTF-8"))
+        
         val jsonMatches = Json.toJson(results)
-        fileJSON.write(jsonMatches.toString())
+        fileJSON.write("var matches = " + jsonMatches.toString())
+        
         fileJSON.close()
+        fos.close()
 
         cache.serialize(cacheFile)
       }
