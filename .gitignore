@@ -1,4 +1,4 @@
 
-doc
-target
-tmp
+/doc
+target/
+/tmp
