@@ -27,7 +27,7 @@ object FeedMatcher {
   def apply(feeds: Seq[String], statements: Seq[Statement], count: Int, cache: Option[FeedMatcherCache]) : (Seq[Result], FeedMatcherCache) = {
     val analyzer = cache.map(_.analyzer).getOrElse( new Analyzer(
       statements,
-      io.Source.fromFile("test/top1000de.txt", "UTF-16")
+      io.Source.fromInputStream(getClass.getResourceAsStream("de/top1000de.txt"), "UTF-16")
     ))
 
     val mapUrlToLengthLastRun = cache.map(_.mapUrlToLength).getOrElse( newMapUrlToLength )

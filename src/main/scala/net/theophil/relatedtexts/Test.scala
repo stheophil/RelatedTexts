@@ -10,7 +10,7 @@ object TestStemmer {
     // Read list from http://snowball.tartarus.org/algorithms/german/diffs.txt
     // and compare output of stemming algorithm to diffs.txt
     // diffs.txt contains two lines with line breaks, that is corrected in local copy
-    val test = io.Source.fromFile("test/diffs.txt", "UTF-8")
+    val test = io.Source.fromInputStream(getClass.getResourceAsStream("/test_data/diffs.txt"), "UTF-8")
     for(line <- test.getLines()) {
       val iSplit = line.indexWhere(_.isSpaceChar)
       val strIn = line.substring(0, iSplit).trim
@@ -50,14 +50,19 @@ object StatTest {
       (JsPath \ "tags").write[Seq[String]]
     )(unlift(OutputStatement.unapply))
 
-  def main(args: Array[String]) {
-    val jsonString = io.Source.fromFile("test/koalitionsvertrag.json").getLines().mkString("\n")
+  def main(args: Array[String]) {    
+    val jsonString = io.Source.fromInputStream(
+      getClass.getResourceAsStream("/test_data/koalitionsvertrag.json"), 
+      "UTF-8"
+    ).getLines().mkString("\n")
+
     val json: JsValue = Json.parse(jsonString)
     val result: JsResult[Seq[InputStatement]] = json.validate[Seq[InputStatement]]
 
-    val top1kWords = (for(line <- io.Source.fromFile("test/top1000de.txt", "UTF-16").getLines) yield
-      GermanStemmer(line)
-     ).toSet
+    val top1kWords = (for(line <- io.Source.fromInputStream(
+      getClass.getResourceAsStream("/de/top1000de.txt"), 
+      "UTF-16"
+    ).getLines) yield GermanStemmer(line)).toSet
 
     result match {
       case s: JsSuccess[Seq[InputStatement]] => {
@@ -116,7 +121,11 @@ object FeedMatcherTest {
       "http://www.bundesregierung.de/SiteGlobals/Functions/RSSFeed/DE/RSSNewsfeed/RSS_Breg_artikel/RSSNewsfeed.xml?nn=392282"
     )
 
-    val jsonString = io.Source.fromFile("test/koalitionsvertrag.json", "UTF-8").getLines().mkString("\n")
+    val jsonString = io.Source.fromInputStream(
+      getClass.getResourceAsStream("/test/koalitionsvertrag.json"), 
+      "UTF-8"
+    ).getLines().mkString("\n")
+
     val json: JsValue = Json.parse(jsonString)
     val seqInputs: JsResult[Seq[InputStatement]] = json.validate[Seq[InputStatement]]
 
