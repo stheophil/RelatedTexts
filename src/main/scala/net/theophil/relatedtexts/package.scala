@@ -15,6 +15,8 @@ package object relatedtexts {
   implicit val orderByMatchValue = Ordering.by[(Statement, TextMatch[AnalyzableItem]), Double](_._2.value)
   type SetBestMatches = collection.mutable.TreeSet[(Statement, TextMatch[AnalyzableItem])]
 
+  // TODO: Rename to DefaultText, FeedMatcher etc should take and return Analyzable instance again.
+  // TODO: Overload FeedMatcher for DefaultText, Result should refer to Analyzable too.
   case class Statement(title: String, override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
   case class ResultMatch(title: String, url: String, confidence: Double, matched: Seq[String])
   case class Result(title: String, url: String, confidence: Double, articles: Seq[ResultMatch])

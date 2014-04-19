@@ -5,24 +5,6 @@ import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.Charset
 import java.util.Date
 
-object TestStemmer {
-  def main(args: Array[String]) {
-    // Read list from http://snowball.tartarus.org/algorithms/german/diffs.txt
-    // and compare output of stemming algorithm to diffs.txt
-    // diffs.txt contains two lines with line breaks, that is corrected in local copy
-    val test = io.Source.fromInputStream(getClass.getResourceAsStream("/test_data/diffs.txt"), "UTF-8")
-    for(line <- test.getLines()) {
-      val iSplit = line.indexWhere(_.isSpaceChar)
-      val strIn = line.substring(0, iSplit).trim
-      val strOut = line.substring(iSplit).trim
-
-      val strOutStemmer = GermanStemmer(strIn)
-      Console.println("in: " + strIn + " expected: " + strOut + " out: " + strOutStemmer)
-      assert(strOut == strOutStemmer)
-    }
-  }
-}
-
 import play.api.libs.json._ // JSON library
 import play.api.libs.json.Reads._ // Custom validation helpers
 import play.api.libs.functional.syntax._ // Combinator syntax
@@ -122,7 +104,7 @@ object FeedMatcherTest {
     )
 
     val jsonString = io.Source.fromInputStream(
-      getClass.getResourceAsStream("/test/koalitionsvertrag.json"), 
+      getClass.getResourceAsStream("/src/test/koalitionsvertrag.json"),
       "UTF-8"
     ).getLines().mkString("\n")
 
