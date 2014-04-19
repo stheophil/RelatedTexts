@@ -12,14 +12,12 @@ package object relatedtexts {
 
   type AnalyzableItem = Item with Analyzable
 
-  implicit val orderByMatchValue = Ordering.by[(Statement, TextMatch[AnalyzableItem]), Double](_._2.value)
-  type SetBestMatches = collection.mutable.TreeSet[(Statement, TextMatch[AnalyzableItem])]
+  implicit def orderByMatchValue[T<:Analyzable] = Ordering.by[(T, TextMatch[AnalyzableItem]), Double](_._2.value)
+  type SetBestMatches[T<:Analyzable] = collection.mutable.TreeSet[(T, TextMatch[AnalyzableItem])]
 
-  // TODO: Rename to DefaultText, FeedMatcher etc should take and return Analyzable instance again.
-  // TODO: Overload FeedMatcher for DefaultText, Result should refer to Analyzable too.
-  case class Statement(title: String, override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
+  case class DefaultText(title: String, override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
   case class ResultMatch(title: String, url: String, confidence: Double, matched: Seq[String])
-  case class Result(title: String, url: String, confidence: Double, articles: Seq[ResultMatch])
+  case class Result[T <: Analyzable](text: T, confidence: Double, articles: Seq[ResultMatch])
 
   implicit val matchWrites: Writes[ResultMatch] = (
     (JsPath \ "title").write[String] and
@@ -28,10 +26,24 @@ package object relatedtexts {
       (JsPath \ "matched").write[Seq[String]]
     )(unlift(ResultMatch.unapply))
 
-  implicit val resultWrites: Writes[Result] = (
-    (JsPath \ "title").write[String] and
-      (JsPath \ "url").write[String] and
-      (JsPath \ "confidence").write[Double] and
-      (JsPath \ "articles").write[Seq[ResultMatch]]
-    )(unlift(Result.unapply))
+  implicit def resultWrites[T<:Analyzable] = new Writes[Result[T]] {
+    def writes(result: Result[T]): JsValue = {
+      Json.obj(
+        "text" -> result.text.text,
+        "confidence" -> result.confidence,
+        "articles" -> result.articles
+      )
+    }
+  }
+
+  implicit def resultDefaultWrites = new Writes[Result[DefaultText]] {
+    def writes(result: Result[DefaultText]): JsValue = {
+      Json.obj(
+        "title" -> result.text.title,
+        "url" -> result.text.url,
+        "confidence" -> result.confidence,
+        "articles" -> result.articles
+      )
+    }
+  }
 }

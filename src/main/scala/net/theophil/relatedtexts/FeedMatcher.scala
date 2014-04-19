@@ -3,7 +3,7 @@ package net.theophil.relatedtexts
 import scala.util.matching.Regex.Match
 import java.util.Date
 
-case class FeedMatcherCache(analyzer: Analyzer[Statement], mapUrlToLength: MapUrlToLength, matches: SetBestMatches) extends Serializable {
+case class FeedMatcherCache[T <: Analyzable](analyzer: Analyzer[T], mapUrlToLength: MapUrlToLength, matches: SetBestMatches[T]) extends Serializable {
   def serialize(fileName: String) {
     // For simplicity, use Java serialization to persist data between update runs
     // In the worst case, when the serialization format changes, the FeedMatcher
@@ -15,25 +15,25 @@ case class FeedMatcherCache(analyzer: Analyzer[Statement], mapUrlToLength: MapUr
 }
 
 object FeedMatcherCache {
-  def fromFile(fileName: String) : Option[FeedMatcherCache] = try {
+  def fromFile[T<:Analyzable](fileName: String) : Option[FeedMatcherCache[T]] = try {
     val input = new java.io.ObjectInputStream(new java.io.FileInputStream(fileName))
-    Some(input.readObject().asInstanceOf[FeedMatcherCache])
+    Some(input.readObject().asInstanceOf[FeedMatcherCache[T]])
   } catch {
     case e: java.io.FileNotFoundException => None
   }
 }
 
 object FeedMatcher {
-  def apply(feeds: Seq[String], statements: Seq[Statement], count: Int, cache: Option[FeedMatcherCache]) : (Seq[Result], FeedMatcherCache) = {
+  def apply[T <: Analyzable](feeds: Seq[String], texts: Seq[T], count: Int, cache: Option[FeedMatcherCache[T]]) : (Seq[Result[T]], FeedMatcherCache[T]) = {
     val analyzer = cache.map(_.analyzer).getOrElse( new Analyzer(
-      statements,
+      texts,
       io.Source.fromInputStream(getClass.getResourceAsStream("/de/top1000de.txt"), "UTF-16")
     ))
 
     val mapUrlToLengthLastRun = cache.map(_.mapUrlToLength).getOrElse( newMapUrlToLength )
     val mapUrlToLength = newMapUrlToLength
 
-    val matches = cache.map(_.matches).getOrElse( new SetBestMatches )
+    val matches = cache.map(_.matches).getOrElse( new SetBestMatches[T] )
 
     import scala.concurrent._
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -69,7 +69,7 @@ object FeedMatcher {
       groupBy(_._1).toArray. // by statement
       sortBy(_._2.last._2.value). // sort by highest match value
       reverse.map{
-      case (stmt, setMatches) => {
+      case (text, setMatches) => {
         val bestMatches = setMatches.toList.reverse.slice(0,3).map(_._2).map( textmatch =>
           ResultMatch(
             textmatch.matched.title,
@@ -78,10 +78,10 @@ object FeedMatcher {
             textmatch.words.map( t => t._1 + ":" + t._2)
           )
         )
-        Result(stmt.title, stmt.url, bestMatches.head.confidence, bestMatches)
+        Result(text, bestMatches.head.confidence, bestMatches)
       }
     }
 
-    (resultsByStatement, FeedMatcherCache(analyzer, mapUrlToLength, matches))
+    (resultsByStatement, FeedMatcherCache[T](analyzer, mapUrlToLength, matches))
   }
 }

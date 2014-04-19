@@ -4,6 +4,9 @@ import net.theophil.relatedtexts._
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.Charset
 import play.api.libs.json._
+import play.api.libs.functional.syntax._
+import net.theophil.relatedtexts.ResultMatch
+import net.theophil.relatedtexts.Result
 
 object FeedMatcherTest {
   import JSON._
@@ -37,7 +40,7 @@ object FeedMatcherTest {
     val seqInputs: JsResult[Seq[InputText]] = json.validate[Seq[InputText]]
 
     val texts = seqInputs.get.map( input => {
-      Statement(
+      DefaultText(
         removeMarkdownLink(input.title),
         removeMarkdownLink(input.title + " " + input.quote),
         input.tags,
