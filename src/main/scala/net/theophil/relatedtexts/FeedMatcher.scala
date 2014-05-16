@@ -8,18 +8,40 @@ case class FeedMatcherCache[T <: Analyzable](analyzer: Analyzer[T], mapUrlToLeng
     // For simplicity, use Java serialization to persist data between update runs
     // In the worst case, when the serialization format changes, the FeedMatcher
     // loses the best matches over the last days and starts fresh.
-    val output = new java.io.ObjectOutputStream(new java.io.FileOutputStream(fileName))
-    output.writeObject(this)
-    output.close()
+    var file : java.io.FileOutputStream = null
+    var output : java.io.ObjectOutputStream = null
+    try {
+      file = new java.io.FileOutputStream(fileName)
+      output = new java.io.ObjectOutputStream(file)
+      output.writeObject(this)
+    } catch {
+      case e: Exception => e.printStackTrace()
+    } finally {
+      if(output!=null) output.close()
+      if(file!=null) file.close()
+    }
   }
 }
 
 object FeedMatcherCache {
-  def fromFile[T<:Analyzable](fileName: String) : Option[FeedMatcherCache[T]] = try {
-    val input = new java.io.ObjectInputStream(new java.io.FileInputStream(fileName))
-    Some(input.readObject().asInstanceOf[FeedMatcherCache[T]])
-  } catch {
-    case e: java.io.FileNotFoundException => None
+  def fromFile[T <: Analyzable](fileName: String): Option[FeedMatcherCache[T]] = {
+    var file: java.io.FileInputStream = null
+    var input: java.io.ObjectInputStream = null
+    try {
+      file = new java.io.FileInputStream(fileName)
+      input = new java.io.ObjectInputStream(file)
+
+      Some(input.readObject().asInstanceOf[FeedMatcherCache[T]])
+    } catch {
+      case e: java.io.FileNotFoundException => None
+      case e: Exception => {
+        e.printStackTrace()
+        None
+      }
+    } finally {
+      if(input!=null) input.close()
+      if(file!=null) file.close()
+    }
   }
 }
 
