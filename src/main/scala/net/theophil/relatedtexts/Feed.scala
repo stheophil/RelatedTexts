@@ -51,6 +51,7 @@ case class Item(title : String, link: String, text: String, faviconUrl: String) 
       Success(Item(title, link, text, faviconAbsoluteUrl.getOrElse("")))
     } catch {
       case e: Exception =>
+        Console.println("[Error] Failed to read feed article: " + link + " : " + e.getMessage)
         Failure(e)
     }
   }
@@ -92,7 +93,7 @@ object Feed {
       })
 
       val avgLength = (itemsNewWithText.map( _.text.length ).sum + itemsSeen.map(i => lastSeenLength(i.link)).sum) /
-        Math.max(itemsNewWithText.length + itemsSeen.length, 0)
+        Math.max(itemsNewWithText.length + itemsSeen.length, 1)
 
       val shortArticle = (item: Item) => item.text.length < avgLength/4
       itemsNewWithText.filter( shortArticle ).foreach( item =>
