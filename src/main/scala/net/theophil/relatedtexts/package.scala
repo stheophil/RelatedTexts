@@ -1,48 +1,106 @@
 package net.theophil
 
 import play.api.libs.json._ // JSON library
-import play.api.libs.json.Reads._ // Custom validation helpers
-import play.api.libs.functional.syntax._ // Combinator syntax
 
 package object relatedtexts {
-  type MapUrlToLength = collection.mutable.HashMap[String, Int] with collection.mutable.SynchronizedMap[String, Int]
-  def newMapUrlToLength : MapUrlToLength = {
-    new collection.mutable.HashMap[String, Int] with collection.mutable.SynchronizedMap[String, Int]
-  }
 
-  type AnalyzableItem = Item with Analyzable
+  /**
+   * One element of the list of [[Result]]s.
+   * @param text the analyzable text that was matched against the analyzable text in the parent [[Result]] object
+   * @param confidence the match confidence
+   * @param matched the list of words that was found in both analyzable texts
+   * @tparam T a type that extends the [[Analyzable]] trait, i.e., a class with a text and a list of keywords
+   */
+  case class ResultMatch[T <: Analyzable](text: T, confidence: Double, matched: Seq[String])
 
-  implicit def orderByMatchValue[T<:Analyzable] = Ordering.by[(T, TextMatch[AnalyzableItem]), Double](_._2.value)
-  type SetBestMatches[T<:Analyzable] = collection.mutable.TreeSet[(T, TextMatch[AnalyzableItem])]
+  /**
+   * A list of analyzable texts that were matched against `text`.
+   * @param text the analyzable text that was matched against the list of `matches`
+   * @param confidence the highest confidence score of any match in `matches`
+   * @param matches the list of [[ResultMatch]]es and their individual scores
+   * @tparam S a type extending [[Analyzable]], i.e., a class with a text and a list of keywords
+   * @tparam T a type extending [[Analyzable]]
+   */
+  case class Result[S <: Analyzable, T <: Analyzable](text: S, confidence: Double, matches: Seq[ResultMatch[T]])
 
-  case class DefaultText(title: String, override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
-  case class ResultMatch(title: String, url: String, confidence: Double, matched: Seq[String])
-  case class Result[T <: Analyzable](text: T, confidence: Double, articles: Seq[ResultMatch])
-
-  implicit val matchWrites: Writes[ResultMatch] = (
-    (JsPath \ "title").write[String] and
-      (JsPath \ "url").write[String] and
-      (JsPath \ "confidence").write[Double] and
-      (JsPath \ "matched").write[Seq[String]]
-    )(unlift(ResultMatch.unapply))
-
-  implicit def resultWrites[T<:Analyzable] = new Writes[Result[T]] {
-    def writes(result: Result[T]): JsValue = {
+  /**
+   * Creates an implicit [[Writes]] object that converts a [[ResultMatch]][T] to JSON.
+   * @tparam T
+   * @return
+   */
+  implicit def matchWrites[T <: Analyzable] = new Writes[ResultMatch[T]] {
+    def writes(m: ResultMatch[T]): JsValue = {
       Json.obj(
-        "text" -> result.text.text,
-        "confidence" -> result.confidence,
-        "articles" -> result.articles
+        "text" -> m.text.text,
+        "keywords" -> m.text.keywords,
+        "confidence" -> m.confidence,
+        "matched" -> m.matched
       )
     }
   }
 
-  implicit def resultDefaultWrites = new Writes[Result[DefaultText]] {
-    def writes(result: Result[DefaultText]): JsValue = {
+  /**
+   * Creates an implicit [[Writes]] object that converts a [[Result]][S, T] to JSON.
+   * @tparam S
+   * @tparam T
+   * @return
+   */
+  implicit def resultWrites[S <: Analyzable, T<:Analyzable] = new Writes[Result[S, T]] {
+    def writes(result: Result[S, T]): JsValue = {
+      Json.obj(
+        "text" -> result.text.text,
+        "keywords" -> result.text.keywords,
+        "confidence" -> result.confidence,
+        "matches" -> result.matches
+      )
+    }
+  }
+
+  /**
+   * A simple default [[Analyzable]] implementation that can be used for matching texts that may also have a title,
+   * and a url.
+   * @param title The text's title. Also printed when the resulting matches are printed as JSON.
+   * @param text The text that is matched.
+   * @param keywords The list of keywords that will be matched. Keywords are always considered to have high relevance.
+   * @param url The text's url. Also printed to JSON.
+   */
+  case class DefaultText(title: String, override val text: String, override val keywords: Seq[String], val url: String) extends Analyzable
+  type DefaultResultMatch = ResultMatch[DefaultText]
+  type DefaultResult = Result[DefaultText, DefaultText]
+  val cTruncateTexts = 500
+
+  /**
+   * Creates an implicit [[Writes]] object that converts a [[ResultMatch]] of [[DefaultText]] to JSON. The `DefaultText.text`
+   * will be truncated to 500 characters.
+   * @return
+   */
+  implicit def matchDefaultWrites = new Writes[DefaultResultMatch] {
+    def writes(m: DefaultResultMatch): JsValue = {
+      Json.obj(
+        "title" -> m.text.title,
+        "text" -> m.text.text.substring(cTruncateTexts),
+        "keywords" -> m.text.keywords,
+        "url" -> m.text.url,
+        "confidence" -> m.confidence,
+        "matched" -> m.matched
+      )
+    }
+  }
+
+  /**
+   * Creates an implicit [[Writes]] object that converts a [[Result]] of [[DefaultText]]s to JSON. The `DefaultText.text`
+   * will be truncated to 500 characters.
+   * @return
+   */
+  implicit def resultDefaultWrites = new Writes[DefaultResult] {
+    def writes(result: DefaultResult): JsValue = {
       Json.obj(
         "title" -> result.text.title,
+        "text" -> result.text.text.substring(cTruncateTexts),
+        "keywords" -> result.text.keywords,
         "url" -> result.text.url,
         "confidence" -> result.confidence,
-        "articles" -> result.articles
+        "matches" -> result.matches
       )
     }
   }

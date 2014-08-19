@@ -1,5 +1,6 @@
 package net.theophil.relatedtexts
 
+@SerialVersionUID(1l)
 class TextStatistics(val ngramCount: Map[String, Int], val keywords: Set[String]) extends Serializable {
   def apply(ngram: String) : Int = {
     ngramCount.getOrElse(ngram, 0)
@@ -42,9 +43,10 @@ trait Analyzable {
   def keywords: Seq[String] = Seq.empty[String]
 }
 
-case class TextMatch[B](val value: Double, val words: Seq[(String, Double)], val matched: B)
+case class TextMatch[T<:Analyzable](val value: Double, val words: Seq[(String, Double)], val matched: T)
 
-class Analyzer[T<:Analyzable](analyzables: Seq[T], stopwordsFile: io.Source) extends Serializable {
+@SerialVersionUID(1l)
+class Analyzer[S<:Analyzable](analyzables: Seq[S], stopwordsFile: io.Source) extends Serializable {
   // http://snowball.tartarus.org/algorithms/german/stop.txt
   val stopwords = stopwordsFile.getLines().toList.flatMap(
     line => {
@@ -92,27 +94,16 @@ class Analyzer[T<:Analyzable](analyzables: Seq[T], stopwordsFile: io.Source) ext
       (scores.map(_._2).sum, scores)
   }
 
-  def bestMatches[B<:Analyzable](texts: Seq[B], limit: Int) : Seq[(T, TextMatch[B])] = {
+  def foreach[T<:Analyzable](texts: Seq[T], limit: Double)(fn: ((S, TextMatch[T])) => Unit) {
     val statisticsOther = texts.map( text => (text, TextStatistics(text.text, text.keywords, stopwords)))
 
-    implicit val order = Ordering.by[(T, TextMatch[B]), Double](_._2.value)
-
-    var queue = scala.collection.immutable.SortedSet.empty[(T, TextMatch[B])]
     statisticsOther.foreach( textstat => {
       statistics.foreach( textstatThis => {
         val s = score(textstatThis._2, textstat._2)
-        val element = (textstatThis._1, new TextMatch[B](s._1, s._2, textstat._1))
-        if(queue.size < limit) {
-          queue = queue + element
-        } else if(order.lt(queue.head, element)) {
-          queue = (queue + element) - queue.head
+        if( limit <= s._1 ) {
+          fn( (textstatThis._1, TextMatch[T](s._1, s._2, textstat._1)) )
         }
       })
     })
-
-    // Grouping the 'limit' best matches e.g. by entry and _adding_ the scores is not a good idea
-    // The quality of matches declines rapidly. Some bad matches may occur very often which
-    // can in the end overshadow the good matches.
-    queue.toList
   }
 }

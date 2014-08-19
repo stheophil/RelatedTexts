@@ -1,6 +1,7 @@
 package net.theophil.relatedtexts
 
 import org.jsoup.Jsoup
+import scala.concurrent.duration
 import scala.util.{Try, Success, Failure}
 import java.util.Date
 import java.net.URL
@@ -82,9 +83,18 @@ object Feed {
         newSeenLength.update(item.link, lastSeenLength(item.link))
       })
 
-      val itemsNewWithText = itemsAll.filter( item => lastSeenLength(item.link)<=0 ).
-        map( item => item.withText ). // scrape feed on demand
-        filter( _.isSuccess ).
+      import scala.concurrent._
+      import scala.concurrent.ExecutionContext.Implicits.global
+
+      val itemsNewWithTextFuture = itemsAll.filter( item => lastSeenLength(item.link)<=0 ).
+        map( item => {
+          future{ item.withText }
+        })
+
+      val itemsNewWithText = Await.result(
+        Future.sequence( itemsNewWithTextFuture ),
+        duration.Duration(5, duration.MINUTES)
+      ).filter( _.isSuccess ).
         map( _.get )
 
       // add new items to seen map
