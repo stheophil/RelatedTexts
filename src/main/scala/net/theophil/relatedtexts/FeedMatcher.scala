@@ -220,7 +220,7 @@ object FeedMatcher {
 
     val analyzer = cache.map( _.analyzer ).getOrElse(TextMatcher.preprocess(texts))
 
-    var timeStart = new Date().getTime()
+    val timeStart = new Date().getTime()
     feeds.foreach{ feedurl =>
       analyzer.foreach(
         Feed.newItemsWithText(
@@ -233,7 +233,7 @@ object FeedMatcher {
         limit
       )(fn)
     }
-    var timeEnd = new Date().getTime()
+    val timeEnd = new Date().getTime()
     Console.println("[Info] Read, scraped and analyzed " + feeds.length + " feeds in " + (timeEnd - timeStart) + " ms" )
 
     FeedMatcherCache[S](analyzer, mapUrlToLength)
