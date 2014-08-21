@@ -69,10 +69,11 @@ class ResultListBuilder[S <: Analyzable, T <: Analyzable] {
    * @return
    */
   def toIterable : Iterable[Result[S, T]] = {
-    matches.values.foreach(_.sortBy(_.value)(Ordering[Double].reverse))
+    val matchesSorted = matches.view.map {
+      case (text, bufferMatches) => (text, bufferMatches.sortBy(_.value)(Ordering[Double].reverse))
+    }.to[Array].sortBy(_._2.head.value)(Ordering[Double].reverse)
 
-    val bufferSorted = matches.to[mutable.ArrayBuffer].sortBy(_._2.head.value)(Ordering[Double].reverse)
-    bufferSorted.view.map {
+    matchesSorted.view.map {
       case (text, bufferMatches) => {
         val seqResultMatch = bufferMatches.map( textmatch =>
           ResultMatch[T](
