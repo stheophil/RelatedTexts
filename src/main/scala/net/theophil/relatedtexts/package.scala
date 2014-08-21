@@ -78,7 +78,7 @@ package object relatedtexts {
     def writes(m: DefaultResultMatch): JsValue = {
       Json.obj(
         "title" -> m.text.title,
-        "text" -> m.text.text.substring(cTruncateTexts),
+        "text" -> m.text.text.substring(0, Math.min(m.text.text.length, cTruncateTexts)),
         "keywords" -> m.text.keywords,
         "url" -> m.text.url,
         "confidence" -> m.confidence,
@@ -96,7 +96,7 @@ package object relatedtexts {
     def writes(result: DefaultResult): JsValue = {
       Json.obj(
         "title" -> result.text.title,
-        "text" -> result.text.text.substring(cTruncateTexts),
+        "text" -> result.text.text.substring(0, Math.min(result.text.text.length, cTruncateTexts)),
         "keywords" -> result.text.keywords,
         "url" -> result.text.url,
         "confidence" -> result.confidence,

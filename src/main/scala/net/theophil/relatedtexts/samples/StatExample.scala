@@ -8,8 +8,6 @@ import play.api.libs.json._
 import play.api.libs.functional.syntax._ // Combinator syntax
 
 object StatExample {
-  import JSON._
-
   case class OutputText(id: Int, title: String, filtered_text: Seq[String], tags: Seq[String])
   implicit val outputTextWrites: Writes[OutputText] = (
     (JsPath \ "id").write[Int] and
