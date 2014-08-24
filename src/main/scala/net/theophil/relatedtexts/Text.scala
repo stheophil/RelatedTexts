@@ -1,24 +1,17 @@
 package net.theophil.relatedtexts
 
 @SerialVersionUID(1l)
-class TextStatistics(val ngramCount: Map[String, Int], val keywords: Set[String]) extends Serializable {
-  def apply(ngram: String) : Int = {
-    ngramCount.getOrElse(ngram, 0)
-  }
+case class NGramCount(local: Int, global: Int)
 
-  def weight(ngram: String) : Double = {
-    // Using 1/word count seems too strict. The value of more frequent words should fall off slower.
-    // Words that occur only 1, 2 or 10 times in such long texts should probably be worth roughly the same.
-    // A linear decreasing function however just amplified the noise
-    // So did (1/count) + linear function
-    1.0 / Math.max(apply(ngram), 1)
+@SerialVersionUID(2l)
+class TextStatistics(val ngramsWithCount: Map[String, NGramCount], val keywords: Set[String]) extends Serializable {
+  def apply(ngram: String) : NGramCount = {
+    ngramsWithCount.getOrElse(ngram, NGramCount(0,0))
   }
-
-  def maxWeight : Double = 1.0
 }
 
 object TextStatistics {
-  def apply(text: String, keywords: Seq[String], stopwords: Set[String]) : TextStatistics = {
+  def ngramsAndKeywords(text: String, keywords: Seq[String], stopwords: Set[String]) : (Map[String, Int], Set[String]) = {
     val regexSeparator = "[^\\wÄÖÜäöüß]+"
 
     val words = text.
@@ -34,7 +27,15 @@ object TextStatistics {
       }
     }).flatten.toMap
 
-    new TextStatistics(ngramCount, keywords.map( GermanStemmer(_)).toSet)
+   (ngramCount, keywords.map( GermanStemmer(_)).toSet)
+  }
+
+  def withoutGlobalCount(text: String, keywords: Seq[String], stopwords: Set[String]) = {
+    val ngramKeywords = ngramsAndKeywords(text, keywords, stopwords)
+    new TextStatistics(
+      ngramKeywords._1.map( t => (t._1 -> NGramCount(t._2, 0))),
+      ngramKeywords._2
+    )
   }
 }
 
@@ -45,57 +46,51 @@ trait Analyzable {
 
 case class TextMatch[T<:Analyzable](val value: Double, val words: Seq[(String, Double)], val matched: T)
 
-@SerialVersionUID(1l)
-class Analyzer[S<:Analyzable](analyzables: Seq[S], stopwordsFile: io.Source) extends Serializable {
-  // http://snowball.tartarus.org/algorithms/german/stop.txt
-  val stopwords = stopwordsFile.getLines().toList.flatMap(
-    line => {
-      val idxComment = line.indexOf("|")
-      val text = line.substring(0, if(idxComment == -1) { line.length } else { idxComment }).trim
-      if(text.isEmpty) {
-        List.empty[String]
-      } else {
-        List(GermanStemmer(text))
-      }
-    }
-  ).toSet
-
-  val statistics = analyzables.map( a => (a, TextStatistics(a.text, a.keywords, stopwords)) )
-  val statisticsGlobal = new TextStatistics(
-    statistics.map( _._2.ngramCount.keys ).
-      flatten.
-      foldLeft(Map.empty[String, Int]){
-      case (map, str) => {
-        map + (str -> (map.getOrElse(str, 0) + 1))
-      }
-    },
-    Set.empty[String])
+@SerialVersionUID(2l)
+class Analyzer[S<:Analyzable](val statistics: Seq[(S, TextStatistics)],
+                              val ngramsWithGlobalCounts : Map[String, Int],
+                              val stopwords: Set[String]) extends Serializable {
 
   def score(statThis: TextStatistics, statOther: TextStatistics) : (Double, Seq[(String, Double)]) = {
-      val ngramCountWithGlobal = statThis.ngramCount.map{ case(str, count) => {
-        (str -> (count, statisticsGlobal(str)))
-      }}.toMap ++
-        statThis.keywords.map( // keywords override ngramCount
-          k => (k -> (statThis.ngramCount.getOrElse(k, 1), 1))
-        ).toMap
-
-     val matchingNgrams = ngramCountWithGlobal.filter{
-        case (str, (count, globalCount)) => 0<statOther(str)
+    // 1. Version: Matching word scored with "local count / global count",
+    // keywords always scored with 1.0
+    // On test set: 187 matches with score > 4 with avg quality 0.31
+    // 2. Version: Matching word scored with "1 / global count"
+    // On test set: 38 matches with score > 4 with avg quality 0.70 (matches_ignore_count.json)
+    // 3. Version: Score keywords with document freq. & and filter with stopword list
+    // On test set: 27 matches with score > 4 with avg quality 0.80 (matches_filter_keywords.json)
+    // 4. Version: Divide score by log(maximum possible score)
+    // On test set: 27 matches with score > 1.0 with avg quality 0.88 (matches_div_logmaxscore.json)
+    val ngramsKeywordsWithCount = statThis.ngramsWithCount ++
+      statThis.keywords.filter{
+        str => !stopwords.contains(str)
+      }.map{
+          str => (str, NGramCount(1, ngramsWithGlobalCounts.getOrElse(str, 1)))
       }
 
-      // longer ngrams don't have a higher score themselves because a 2-gram usually implies
-      // two 1-grams too
+    val matchingNgramsKeywords = ngramsKeywordsWithCount.filter{
+      case (str, count) => 0<statOther(str).local
+    }
 
-      // TODO: Normalize by number of ngrams in statThis?
-      // TODO: multiply with log(count) instead?
-      val scores = matchingNgrams.map{
-        case (str, (count, globalCount)) => (str, count * 1.0 / Math.max(1, globalCount) )
-      }.toSeq
-      (scores.map(_._2).sum, scores)
+    // longer ngrams don't have a higher score themselves because a 2-gram usually implies
+    // two 1-grams too
+
+    val scores = matchingNgramsKeywords.map{
+       case (str, count) => (str, 1.0 / Math.max(1, count.global).toDouble )
+    }.toSeq
+
+    val max_score = ngramsKeywordsWithCount.map{
+      case (str, count) => 1.0 / Math.max(1, count.global).toDouble
+    }.sum
+
+    (scores.map(_._2).sum / Math.log(max_score), scores)
   }
 
   def foreach[T<:Analyzable](texts: Seq[T], limit: Double)(fn: ((S, TextMatch[T])) => Unit) {
-    val statisticsOther = texts.map( text => (text, TextStatistics(text.text, text.keywords, stopwords)))
+     val statisticsOther = texts.map( text => (
+      text,
+      TextStatistics.withoutGlobalCount(text.text, text.keywords, stopwords)
+    ))
 
     statisticsOther.foreach( textstat => {
       statistics.foreach( textstatThis => {
@@ -106,4 +101,62 @@ class Analyzer[S<:Analyzable](analyzables: Seq[S], stopwordsFile: io.Source) ext
       })
     })
   }
+}
+
+object Analyzer {
+  def apply[S<:Analyzable](analyzables: Seq[S], stopwordsFile: io.Source) = {
+
+    // Parse list of stopwords, one stop word per line
+    // Rest of line after | is considered a comment
+    // Short list of stopwords e.g.: http://snowball.tartarus.org/algorithms/german/stop.txt
+    // Better: Use 1k most frequent words
+    val stopwords = stopwordsFile.getLines().toList.flatMap(
+      line => {
+        val idxComment = line.indexOf("|")
+        val text = line.substring(0, if (idxComment == -1) {
+          line.length
+        } else {
+          idxComment
+        }).trim
+        if (text.isEmpty) {
+          List.empty[String]
+        } else {
+          List(GermanStemmer(text))
+        }
+      }
+    ).toSet
+
+    // Calculate ngram counts in each analyzable and stemmed keywords
+    val statistics : Seq[(S, Map[String, Int], Set[String])] = analyzables.map(a => {
+      val ngramsKeywords = TextStatistics.ngramsAndKeywords(a.text, a.keywords, stopwords)
+      (a, ngramsKeywords._1, ngramsKeywords._2)
+    })
+
+    // Calculate global ngram counts
+    val ngramsWithGlobalCounts = statistics.map(_._2.keys).
+        flatten.
+        foldLeft(Map.empty[String, Int]) {
+        case (map, str) => {
+          val count = map.getOrElse(str, 0)
+          map + (str -> (count+1))
+        }
+      }
+
+    // Create final Analyzer
+    new Analyzer[S](
+      statistics.map{
+        case (analyzable, ngramsWithCount, keywords) => {
+          val ngramsWithGlobalCount = ngramsWithCount.map{
+            case (ngram, count) => {
+              (ngram -> NGramCount(count, ngramsWithGlobalCounts(ngram)))
+            }
+          }
+          (analyzable, new TextStatistics(ngramsWithGlobalCount, keywords))
+        }
+      },
+      ngramsWithGlobalCounts,
+      stopwords
+    )
+  }
+
 }

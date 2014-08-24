@@ -160,7 +160,7 @@ object TextMatcher {
    * @tparam S
    * @return
    */
-  def preprocess[S <: Analyzable](textsLeft: Seq[S]) = new Analyzer(
+  def preprocess[S <: Analyzable](textsLeft: Seq[S]) = Analyzer(
     textsLeft,
     io.Source.fromInputStream(getClass.getResourceAsStream("/de/top1000de.txt"), "UTF-16")
   )

@@ -40,8 +40,8 @@ object StatExample {
         // have been removed and all words have been stemmed
         val inputWordSeq = s.get.map{ input =>
           val filtered_text = input.title + " " + input.quote
-          val analytics = TextStatistics(filtered_text, Seq.empty[String], top1kWords)
-          (input, analytics.ngramCount.toSeq.map(_._1.mkString))
+          val analytics = TextStatistics.withoutGlobalCount(filtered_text, Seq.empty[String], top1kWords)
+          (input, analytics.ngramsWithCount.toSeq.map(_._1.mkString))
         }
 
         // Calculate number of occurrences for each remaining ngram
