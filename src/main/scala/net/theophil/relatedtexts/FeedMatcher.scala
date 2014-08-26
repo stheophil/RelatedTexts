@@ -1,5 +1,6 @@
 package net.theophil.relatedtexts
 
+import java.io.InvalidClassException
 import java.util.Date
 
 import scala.collection.mutable
@@ -13,12 +14,26 @@ object Cache {
     var input: java.io.ObjectInputStream = null
     try {
       file = new java.io.FileInputStream(fileName)
-      input = new java.io.ObjectInputStream(file)
+      input = new java.io.ObjectInputStream(file)  {
+        // As seen on http://stackoverflow.com/questions/16386252/scala-deserialization-class-not-found
+        override def resolveClass(desc: java.io.ObjectStreamClass): Class[_] = {
+          try { Class.forName(desc.getName, false, getClass.getClassLoader) }
+          catch { case ex: ClassNotFoundException => super.resolveClass(desc) }
+        }
+      }
 
       Some(input.readObject().asInstanceOf[T])
     } catch {
-      case e: java.io.FileNotFoundException => None
+      case e: java.io.FileNotFoundException => {
+        Console.println("Couldn't load cache from " + fileName + ". Starting fresh." )
+        None
+      }
+      case e: InvalidClassException => {
+        Console.println("Couldn't load cache from " + fileName + ". SerialVersionUID changed. Starting fresh." )
+        None
+      }
       case e: Exception => {
+        Console.println("Couldn't load cache from " + fileName + ". Unknown problem. Starting fresh." )
         e.printStackTrace()
         None
       }
@@ -196,7 +211,7 @@ import FeedMatcherCache._
  */
 @SerialVersionUID(1l)
 case class FeedMatcherCache[S <: Analyzable](analyzer: Analyzer[S],
-                                             mapUrlToLength: MapUrlToLength) extends Serializable
+                                             mapUrlToLength: MapUrlToLength)
 
 object FeedMatcher {
   /**
