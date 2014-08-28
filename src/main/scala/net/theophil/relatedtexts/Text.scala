@@ -83,7 +83,7 @@ class Analyzer[S<:Analyzable](val statistics: Seq[(S, TextStatistics)],
       case (str, count) => 1.0 / Math.max(1, count.global).toDouble
     }.sum
 
-    (scores.map(_._2).sum / Math.log(max_score), scores)
+    (scores.map(_._2).sum /* / Math.log(max_score) */, scores)
   }
 
   def foreach[T<:Analyzable](texts: Seq[T], limit: Double)(fn: ((S, TextMatch[T])) => Unit) {
