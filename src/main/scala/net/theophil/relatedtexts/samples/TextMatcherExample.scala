@@ -35,7 +35,7 @@ object TextMatcherExample {
           ))
         )
       },
-      /*limit*/ 1.0
+      /*limit*/ 4.0
     )
 
     writeMatches(Json.toJson(

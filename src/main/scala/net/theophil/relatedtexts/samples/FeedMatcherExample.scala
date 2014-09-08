@@ -27,7 +27,7 @@ object FeedMatcherExample {
       samples.loadSampleTexts,
       feeds,
       (m: (DefaultText, TextMatch[AnalyzableItem])) => resultlist(m),
-      /*limit*/ 1.0
+      /*limit*/ 4.0
     )
 
     writeMatches(Json.toJson(resultlist.toIterable).toString())
