@@ -104,4 +104,26 @@ package object relatedtexts {
       )
     }
   }
+
+  implicit def ngramCountWrites = new Writes[NGramCount] {
+    def writes(c: NGramCount): JsValue = {
+      Json.obj(
+        "local" -> c.local,
+        "global" -> c.global
+      )
+    }
+  }
+
+  /**
+   * Creates an implicit [[Writes]] object that converts [[TextStatistics]] to JSON. 
+   * @return
+   */
+  implicit def textstatWrites = new Writes[TextStatistics] {
+    def writes(t: TextStatistics): JsValue = {
+      Json.obj(
+        "ngramsWithCount" -> t.ngramsWithCount,
+        "keywords" -> t.keywords
+      )
+    }
+  }
 }
