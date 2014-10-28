@@ -56,6 +56,15 @@ package object relatedtexts {
     }
   }
 
+  implicit def txtmatchWrites[T<:Analyzable] = new Writes[TextMatch[T]] {
+    def writes(t: TextMatch[T]): JsValue = {
+      Json.obj(
+        "confidence" -> t.value,
+        "matches" -> t.words.map(p => p._1 + ":" + p._2)
+      )
+    }
+  }
+
   /**
    * A simple default [[Analyzable]] implementation that can be used for matching texts that may also have a title,
    * and a url.
